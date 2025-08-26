@@ -1,0 +1,40 @@
+databases:
+  - name: teer-betting-db
+    databaseName: teer_betting
+    user: teer_user
+
+services:
+  - type: web
+    name: teer-betting-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: teer-betting-db
+          property: connectionString
+      - key: REDIS_URL
+        value: redis://localhost:6379
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: ENVIRONMENT
+        value: production
+    healthCheckPath: /health
+
+  - type: web
+    name: teer-betting-frontend
+    runtime: node
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://teer-betting-backend.onrender.com
+
+  - type: redis
+    name: teer-betting-redis
+    ipAllowList: []
