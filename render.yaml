@@ -1,0 +1,35 @@
+version: 2
+services:
+  - type: web
+    name: teer-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:password@localhost:5432/teer_betting
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_ORIGINS
+        value: "*"
+    autoDeploy: true
+    
+  - type: web
+    name: teer-frontend
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile
+    envVars:
+      - key: REACT_APP_API_BASE_URL
+        fromService:
+          type: web
+          name: teer-backend
+          property: host
+    autoDeploy: true
+
+  - type: pserv
+    name: teer-database
+    env: postgresql
+    plan: free
+    databaseName: teer_betting
+    user: postgres
