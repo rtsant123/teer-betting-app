@@ -1,6 +1,8 @@
 # Build stage
 FROM node:18-alpine AS build
 
+ARG REACT_APP_API_BASE_URL
+
 WORKDIR /app
 
 # Copy package files
@@ -12,8 +14,11 @@ RUN npm install --omit=dev
 # Copy source code
 COPY . .
 
+# Make base URL available to CRA build
+ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+
 # Build the app
-RUN npm run build
+RUN echo "Building with REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL" && npm run build
 
 # Production stage
 FROM nginx:alpine

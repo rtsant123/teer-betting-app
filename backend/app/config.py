@@ -5,7 +5,7 @@ from pydantic import field_validator
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgres:password@localhost:5434/teer_betting"
+    DATABASE_URL: str = "postgresql://postgres:postgres123@localhost:5434/teer_betting"
     
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"

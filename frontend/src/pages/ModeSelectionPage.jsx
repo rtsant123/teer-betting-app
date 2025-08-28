@@ -4,13 +4,11 @@ import { ArrowLeft, Target, Clock, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import BottomNav from '../components/common/BottomNav';
 import HeaderBar from '../components/common/HeaderBar';
-import { useWallet } from '../contexts/WalletContext';
 import api from '../services/api';
 
 const ModeSelectionPage = () => {
   const navigate = useNavigate();
   const { houseId, playType } = useParams();
-  const { balance } = useWallet();
   const [houseData, setHouseData] = useState(null);
   const [loading, setLoading] = useState(true);
 

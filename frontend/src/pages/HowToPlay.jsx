@@ -17,8 +17,6 @@ import {
   AlertTriangle,
   Lightbulb
 } from 'lucide-react';
-import HeaderBar from '../components/common/HeaderBar';
-import BottomNav from '../components/common/BottomNav';
 
 const HowToPlay = () => {
   const navigate = useNavigate();

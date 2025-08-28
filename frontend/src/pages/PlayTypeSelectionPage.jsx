@@ -4,7 +4,6 @@ import { ArrowLeft, Target, Clock, TrendingUp } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import BottomNav from '../components/common/BottomNav';
 import HeaderBar from '../components/common/HeaderBar';
-import { useWallet } from '../contexts/WalletContext';
 import api from '../services/api';
 
 const PlayTypeSelectionPage = () => {

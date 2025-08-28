@@ -1,11 +1,11 @@
 FROM python:3.11-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Set work directory
-WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install system dependencies
 RUN apt-get update \
@@ -15,20 +15,33 @@ RUN apt-get update \
         python3-dev \
         libpq-dev \
         curl \
+        build-essential \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Set work directory
+WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel \
+    && pip install -r requirements.txt
 
 # Copy project
 COPY . .
 
-# Create necessary directories and fix permissions
-RUN mkdir -p /app/logs /app/uploads
+# Create necessary directories
+RUN mkdir -p /app/logs /app/uploads/banners /app/uploads/documents /app/uploads/images /app/uploads/qr_codes
+
+# Make script executable
+RUN chmod +x /app/wait-for-db.sh /app/start.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run with database wait
+CMD ["/app/wait-for-db.sh"]
