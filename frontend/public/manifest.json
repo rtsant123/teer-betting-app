@@ -1,0 +1,22 @@
+{
+  "short_name": "Teer Betting",
+  "name": "Teer Betting Platform",
+  "description": "Complete Teer betting platform with real-time results",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "categories": ["entertainment", "games", "sports"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
+}
