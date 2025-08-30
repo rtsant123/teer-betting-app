@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api';
 
 const AdminHouseManagement = () => {
   const [houses, setHouses] = useState([]);
@@ -37,17 +38,8 @@ const AdminHouseManagement = () => {
 
   const fetchHouses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/v1/admin/houses', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setHouses(data);
-      }
+      const response = await apiGet('/admin/houses');
+      setHouses(response.data);
     } catch (error) {
       console.error('Error fetching houses:', error);
     } finally {
@@ -57,31 +49,18 @@ const AdminHouseManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
     try {
-      const url = editingHouse 
-        ? `/api/v1/admin/houses/${editingHouse.id}`
-        : '/api/v1/admin/houses';
-      const method = editingHouse ? 'PUT' : 'POST';
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-      if (response.ok) {
-        await fetchHouses();
-        resetForm();
-        alert(editingHouse ? 'House updated successfully!' : 'House created successfully!');
+      if (editingHouse) {
+        await apiPut(`/admin/houses/${editingHouse.id}`, formData);
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.detail}`);
+        await apiPost('/admin/houses', formData);
       }
+      await fetchHouses();
+      resetForm();
+      alert(editingHouse ? 'House updated successfully!' : 'House created successfully!');
     } catch (error) {
       console.error('Error saving house:', error);
-      alert('Error saving house');
+      alert(`Error: ${error.response?.data?.detail || 'Error saving house'}`);
     }
   };
 
@@ -148,20 +127,12 @@ const AdminHouseManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this house?')) {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/v1/admin/houses/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (response.ok) {
-          await fetchHouses();
-          alert('House deleted successfully!');
-        }
+        await apiDelete(`/admin/houses/${id}`);
+        await fetchHouses();
+        alert('House deleted successfully!');
       } catch (error) {
         console.error('Error deleting house:', error);
+        alert(`Error: ${error.response?.data?.detail || 'Error deleting house'}`);
       }
     }
   };

@@ -204,7 +204,7 @@ const Wallet = () => {
 
     const selectedMethod = withdrawMethods.find(m => m.id === parseInt(withdrawForm.payment_method_id));
     if (selectedMethod) {
-      if (selectedMethod.type === 'BANK_TRANSFER') {
+      if (selectedMethod.type === 'BANK_ACCOUNT') {
         if (!withdrawForm.account_holder_name.trim()) {
           errors.account_holder_name = 'Please enter account holder name';
         }
@@ -250,12 +250,18 @@ const Wallet = () => {
 
     setLoading(true);
     try {
+      // Prepare transaction details according to backend schema
+      const transactionDetails = {
+        reference_id: depositForm.transaction_id,
+        user_notes: depositForm.notes || '',
+        payment_proof: depositForm.screenshot ? 'uploaded' : null
+      };
+
       // Create form data for file upload
       const formData = new FormData();
       formData.append('amount', parseFloat(depositForm.amount));
       formData.append('payment_method_id', parseInt(depositForm.payment_method_id));
-      formData.append('transaction_id', depositForm.transaction_id);
-      formData.append('notes', depositForm.notes || '');
+      formData.append('transaction_details', JSON.stringify(transactionDetails));
       
       if (depositForm.screenshot) {
         formData.append('screenshot', depositForm.screenshot);
@@ -292,16 +298,19 @@ const Wallet = () => {
 
     setLoading(true);
     try {
+      // Prepare transaction details according to backend schema
+      const transactionDetails = {
+        account_holder_name: withdrawForm.account_holder_name,
+        account_number: withdrawForm.account_number,
+        ifsc_code: withdrawForm.ifsc_code,
+        upi_id: withdrawForm.upi_id,
+        user_notes: withdrawForm.notes || ''
+      };
+
       const withdrawData = {
         amount: parseFloat(withdrawForm.amount),
         payment_method_id: parseInt(withdrawForm.payment_method_id),
-        notes: withdrawForm.notes || '',
-        transaction_details: {
-          account_holder_name: withdrawForm.account_holder_name,
-          account_number: withdrawForm.account_number,
-          ifsc_code: withdrawForm.ifsc_code,
-          upi_id: withdrawForm.upi_id
-        }
+        transaction_details: transactionDetails
       };
 
       await walletService.withdraw(withdrawData);
@@ -681,7 +690,7 @@ const Wallet = () => {
                         <option value="">Select payment method</option>
                         {depositMethods.map((method) => (
                           <option key={method.id} value={method.id}>
-                            {method.type === 'UPI' ? '📱' : method.type === 'BANK_TRANSFER' ? '🏦' : '💳'} {method.name} ({method.type})
+                            {method.type === 'UPI' ? '📱' : method.type === 'BANK_ACCOUNT' ? '🏦' : method.type === 'WALLET' ? '💳' : '💰'} {method.name} ({method.type})
                           </option>
                         ))}
                       </select>
@@ -895,75 +904,291 @@ const Wallet = () => {
             </div>
           )}
 
-          {/* Withdraw Tab */}
+          {/* Withdraw Tab - Enhanced with Detailed Forms */}
           {activeTab === 'withdraw' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-red-600">Withdraw Money</CardTitle>
-                <CardDescription>Withdraw funds from your wallet to your preferred payment method</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
-                    <div className="text-sm text-yellow-800">
-                      <p className="font-medium">Withdrawal Information:</p>
-                      <ul className="mt-1 list-disc list-inside space-y-1">
-                        <li>Minimum withdrawal amount: ₹100</li>
-                        <li>Processing time: 1-3 business days</li>
-                        <li>Withdrawals are processed during business hours</li>
-                      </ul>
+            <div className="space-y-4">
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-pink-50">
+                <CardHeader className="pb-3 sm:pb-4 mobile-card-padding">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center">
+                      <Minus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-red-700 text-lg sm:text-xl font-bold">Withdraw Money</CardTitle>
+                      <CardDescription className="text-red-600 text-sm sm:text-base">Secure withdrawal to your account</CardDescription>
                     </div>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="form-group">
-                      <label className="form-label">Amount</label>
-                      <input
-                        type="number"
-                        placeholder="Enter amount"
-                        value={withdrawForm.amount}
-                        onChange={(e) => setWithdrawForm({...withdrawForm, amount: e.target.value})}
-                        className="form-input"
-                      />
-                      <small className="form-success">Available: ₹{balance?.toLocaleString() || '0'}</small>
+                </CardHeader>
+                
+                <CardContent className="space-y-4 sm:space-y-6 mobile-card-padding">
+                  {/* Withdrawal Information */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 sm:p-4">
+                    <div className="flex items-start">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-yellow-800">
+                        <p className="font-medium mb-2">Withdrawal Information:</p>
+                        <ul className="space-y-1 text-xs sm:text-sm">
+                          <li>• Minimum withdrawal: ₹100</li>
+                          <li>• Processing time: 1-3 business days</li>
+                          <li>• Available balance: ₹{balance?.toLocaleString() || '0'}</li>
+                        </ul>
+                      </div>
                     </div>
-                    
-                    <div className="form-group">
-                      <label className="form-label">Payment Method</label>
+                  </div>
+
+                  <form onSubmit={handleWithdraw} className="space-y-4 sm:space-y-6">
+                    {/* Amount Input */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Amount <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-lg">₹</span>
+                        <input
+                          type="number"
+                          placeholder="Enter amount (min ₹100)"
+                          value={withdrawForm.amount}
+                          onChange={(e) => {
+                            setWithdrawForm({...withdrawForm, amount: e.target.value});
+                            if (withdrawFormErrors.amount) {
+                              setWithdrawFormErrors({...withdrawFormErrors, amount: ''});
+                            }
+                          }}
+                          className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-4 text-lg font-semibold border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all mobile-form-input ${
+                            withdrawFormErrors.amount ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                          }`}
+                        />
+                      </div>
+                      {withdrawFormErrors.amount && (
+                        <p className="text-red-500 text-sm flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {withdrawFormErrors.amount}
+                        </p>
+                      )}
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        Available: ₹{balance?.toLocaleString() || '0'}
+                      </p>
+                    </div>
+
+                    {/* Payment Method Selection */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Withdrawal Method <span className="text-red-500">*</span>
+                      </label>
                       <select
                         value={withdrawForm.payment_method_id}
-                        onChange={(e) => setWithdrawForm({...withdrawForm, payment_method_id: e.target.value})}
-                        className="form-input"
+                        onChange={(e) => {
+                          setWithdrawForm({...withdrawForm, payment_method_id: e.target.value});
+                          if (withdrawFormErrors.payment_method_id) {
+                            setWithdrawFormErrors({...withdrawFormErrors, payment_method_id: ''});
+                          }
+                        }}
+                        className={`w-full px-3 sm:px-4 py-3 sm:py-4 text-base sm:text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all mobile-form-select ${
+                          withdrawFormErrors.payment_method_id ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                        }`}
                       >
-                        <option value="">Select payment method</option>
-                        {withdrawMethods.length === 0 && (
-                          <option value="" disabled>No withdrawal methods available</option>
-                        )}
+                        <option value="">Select withdrawal method</option>
                         {withdrawMethods.map((method) => (
                           <option key={method.id} value={method.id}>
-                            {method.type === 'UPI' ? '📱' : '🏦'} {method.name} ({method.type})
+                            {method.type === 'UPI' ? '📱' : method.type === 'BANK_ACCOUNT' ? '🏦' : method.type === 'WALLET' ? '💳' : '💰'} {method.name} ({method.type})
                           </option>
                         ))}
                       </select>
+                      {withdrawFormErrors.payment_method_id && (
+                        <p className="text-red-500 text-sm flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {withdrawFormErrors.payment_method_id}
+                        </p>
+                      )}
                       {withdrawMethods.length === 0 && (
-                        <small className="form-error">No payment methods available for withdrawal</small>
+                        <p className="text-amber-600 text-sm flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          No withdrawal methods available
+                        </p>
                       )}
                     </div>
 
-                    <button
-                      className="btn btn-danger w-full"
-                      onClick={handleWithdraw}
-                      disabled={loading || !withdrawForm.amount || !withdrawForm.payment_method_id || parseFloat(withdrawForm.amount) > balance}
-                    >
-                      {loading ? 'Processing...' : `Withdraw ₹${withdrawForm.amount || '0'}`}
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    {/* Dynamic Form Fields Based on Payment Method */}
+                    {withdrawForm.payment_method_id && (() => {
+                      const selectedMethod = withdrawMethods.find(m => m.id === parseInt(withdrawForm.payment_method_id));
+                      if (!selectedMethod) return null;
+
+                      if (selectedMethod.type === 'BANK_ACCOUNT') {
+                        return (
+                          <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                            <h3 className="text-lg font-semibold text-blue-800 flex items-center">
+                              <CreditCard className="w-5 h-5 mr-2" />
+                              Bank Account Details
+                            </h3>
+                            
+                            {/* Account Holder Name */}
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Account Holder Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Enter account holder name"
+                                value={withdrawForm.account_holder_name}
+                                onChange={(e) => {
+                                  setWithdrawForm({...withdrawForm, account_holder_name: e.target.value});
+                                  if (withdrawFormErrors.account_holder_name) {
+                                    setWithdrawFormErrors({...withdrawFormErrors, account_holder_name: ''});
+                                  }
+                                }}
+                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                                  withdrawFormErrors.account_holder_name ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                                }`}
+                              />
+                              {withdrawFormErrors.account_holder_name && (
+                                <p className="text-red-500 text-sm flex items-center">
+                                  <AlertCircle className="w-4 h-4 mr-1" />
+                                  {withdrawFormErrors.account_holder_name}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Account Number */}
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Account Number <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Enter bank account number"
+                                value={withdrawForm.account_number}
+                                onChange={(e) => {
+                                  setWithdrawForm({...withdrawForm, account_number: e.target.value});
+                                  if (withdrawFormErrors.account_number) {
+                                    setWithdrawFormErrors({...withdrawFormErrors, account_number: ''});
+                                  }
+                                }}
+                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                                  withdrawFormErrors.account_number ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                                }`}
+                              />
+                              {withdrawFormErrors.account_number && (
+                                <p className="text-red-500 text-sm flex items-center">
+                                  <AlertCircle className="w-4 h-4 mr-1" />
+                                  {withdrawFormErrors.account_number}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* IFSC Code */}
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                IFSC Code <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Enter IFSC code (e.g., SBIN0001234)"
+                                value={withdrawForm.ifsc_code}
+                                onChange={(e) => {
+                                  setWithdrawForm({...withdrawForm, ifsc_code: e.target.value.toUpperCase()});
+                                  if (withdrawFormErrors.ifsc_code) {
+                                    setWithdrawFormErrors({...withdrawFormErrors, ifsc_code: ''});
+                                  }
+                                }}
+                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                                  withdrawFormErrors.ifsc_code ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                                }`}
+                              />
+                              {withdrawFormErrors.ifsc_code && (
+                                <p className="text-red-500 text-sm flex items-center">
+                                  <AlertCircle className="w-4 h-4 mr-1" />
+                                  {withdrawFormErrors.ifsc_code}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-600">
+                                Find your IFSC code on your bank's website or passbook
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      } else if (selectedMethod.type === 'UPI') {
+                        return (
+                          <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                            <h3 className="text-lg font-semibold text-purple-800 flex items-center">
+                              <Smartphone className="w-5 h-5 mr-2" />
+                              UPI Details
+                            </h3>
+                            
+                            {/* UPI ID */}
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                UPI ID <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Enter UPI ID (e.g., yourname@paytm)"
+                                value={withdrawForm.upi_id}
+                                onChange={(e) => {
+                                  setWithdrawForm({...withdrawForm, upi_id: e.target.value});
+                                  if (withdrawFormErrors.upi_id) {
+                                    setWithdrawFormErrors({...withdrawFormErrors, upi_id: ''});
+                                  }
+                                }}
+                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all ${
+                                  withdrawFormErrors.upi_id ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                                }`}
+                              />
+                              {withdrawFormErrors.upi_id && (
+                                <p className="text-red-500 text-sm flex items-center">
+                                  <AlertCircle className="w-4 h-4 mr-1" />
+                                  {withdrawFormErrors.upi_id}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-600">
+                                Examples: name@paytm, name@ybl, name@okhdfcbank
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Additional Notes */}
+                    {withdrawForm.payment_method_id && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          Additional Notes (Optional)
+                        </label>
+                        <textarea
+                          placeholder="Any special instructions or notes..."
+                          value={withdrawForm.notes}
+                          onChange={(e) => setWithdrawForm({...withdrawForm, notes: e.target.value})}
+                          rows={3}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all resize-none"
+                        />
+                      </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <div className="pt-4">
+                      <Button 
+                        type="submit"
+                        className="w-full py-4 text-lg font-bold bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                        disabled={loading || !withdrawForm.amount || !withdrawForm.payment_method_id || parseFloat(withdrawForm.amount) > balance}
+                      >
+                        {loading ? (
+                          <div className="flex items-center justify-center space-x-2">
+                            <RefreshCw className="w-5 h-5 animate-spin" />
+                            <span>Processing...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center space-x-2">
+                            <Minus className="w-5 h-5" />
+                            <span>Withdraw ₹{withdrawForm.amount || '0'}</span>
+                          </div>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* Transactions Tab */}

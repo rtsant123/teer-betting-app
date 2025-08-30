@@ -216,9 +216,12 @@ const FRHousePage = () => {
           {/* Game Date and Time */}
           <div className="mt-3">
             <GameDateTimeDisplay 
-              gameData={houseData}
-              gameType="FR"
-              mode="full"
+              scheduledTime={houseData?.rounds?.FR?.scheduled_time}
+              bettingClosesAt={houseData?.rounds?.FR?.betting_closes_at}
+              gameType="FR House"
+              houseName={houseData?.house?.name}
+              compact={false}
+              showGameDay={true}
             />
           </div>
         </div>

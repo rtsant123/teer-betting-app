@@ -227,9 +227,12 @@ const FRDirectPage = () => {
           {/* Game Date and Time */}
           <div className="mt-3">
             <GameDateTimeDisplay 
-              gameData={houseData}
-              gameType="FR"
-              mode="full"
+              scheduledTime={houseData?.rounds?.FR?.scheduled_time}
+              bettingClosesAt={houseData?.rounds?.FR?.betting_closes_at}
+              gameType="FR Direct"
+              houseName={houseData?.house?.name}
+              compact={false}
+              showGameDay={true}
             />
           </div>
         </div>

@@ -1,42 +1,32 @@
 import axios from 'axios';
-// Auto-detect API base URL for different environments
+
+/**
+ * Centralized API configuration
+ * Uses VITE_API_URL environment variable or smart defaults
+ */
 const getApiBaseUrl = () => {
-  // If explicitly set, use it (for production)
-  if (process.env.REACT_APP_API_BASE_URL) {
-    console.log('Using configured API URL:', process.env.REACT_APP_API_BASE_URL);
-    return process.env.REACT_APP_API_BASE_URL;
+  // Use environment variable if set (production/staging)
+  if (import.meta.env.VITE_API_URL) {
+    console.log('Using configured API URL:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
   }
   
-  // Auto-detect based on current location
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  const port = window.location.port;
+  // Production default - use reverse proxy
+  if (import.meta.env.PROD) {
+    return '/api';
+  }
   
-  console.log('Auto-detecting API URL for:', { hostname, protocol, port });
+  // Development fallback
+  const hostname = window.location.hostname;
+  console.log('Auto-detecting API URL for:', { hostname });
   
   // GitHub Codespaces
   if (hostname.includes('github.dev') || hostname.includes('codespaces')) {
-    return `/api/v1`;
-  } 
-  // Local development
-  else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:8001/api/v1';
-  } 
-  // Production with custom port (VPS with IP)
-  else if (port === '80' || port === '443' || port === '') {
-    // If on standard ports, assume backend is on :8001 or use proxy
-    if (hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-      // IP address - likely VPS deployment
-      return `http://${hostname}:8001/api/v1`;
-    } else {
-      // Domain - use proxy
-      return '/api/v1';
-    }
-  } 
-  // Fallback
-  else {
     return '/api/v1';
-  }
+  } 
+  
+  // Local development - avoid hardcoded localhost
+  return '/api/v1';
 };
 
 // Create axios instance with base configuration

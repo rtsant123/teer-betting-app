@@ -230,9 +230,12 @@ const SRDirectPage = () => {
           {/* Game Date and Time */}
           <div className="mt-3">
             <GameDateTimeDisplay 
-              gameData={houseData}
-              gameType="SR"
-              mode="full"
+              scheduledTime={houseData?.rounds?.SR?.scheduled_time}
+              bettingClosesAt={houseData?.rounds?.SR?.betting_closes_at}
+              gameType="SR Direct"
+              houseName={houseData?.house?.name}
+              compact={false}
+              showGameDay={true}
             />
           </div>
         </div>

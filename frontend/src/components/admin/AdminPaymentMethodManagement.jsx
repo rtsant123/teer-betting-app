@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-// Configure axios defaults for this component
-const apiClient = axios.create({
-  baseURL: '/api/v1',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+import { apiGet, apiPost, apiPut, apiDelete, apiClient } from '../../../lib/api';
+
 const AdminPaymentMethodManagement = () => {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,10 +21,7 @@ const AdminPaymentMethodManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const fetchPaymentMethods = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await apiClient.get('/admin/payment-methods', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiGet('/admin/payment-methods');
       setPaymentMethods(response.data);
       setError('');
     } catch (err) {
@@ -55,9 +46,8 @@ const AdminPaymentMethodManagement = () => {
       formData.append('file', file);
       
       // Upload payment method image
-      const uploadResponse = await apiClient.post('/uploads/image', formData, {
+      const uploadResponse = await apiPost('/uploads/image', formData, {
         headers: { 
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
@@ -183,10 +173,7 @@ const AdminPaymentMethodManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this payment method?')) {
       try {
-        const token = localStorage.getItem('token');
-        await apiClient.delete(`/admin/payment-methods/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await apiDelete(`/admin/payment-methods/${id}`);
         fetchPaymentMethods();
         setError('');
       } catch (err) {

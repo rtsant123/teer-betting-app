@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { apiGet, apiPost, apiPut } from '../lib/api';
 import toast from 'react-hot-toast';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
