@@ -23,12 +23,12 @@ PATTERNS=(
 VIOLATIONS_FOUND=false
 
 for pattern in "${PATTERNS[@]}"; do
-    # Search in staged files only
-    if git diff --cached --name-only | grep -E '\.(js|jsx|ts|tsx)$' | xargs grep -l "$pattern" 2>/dev/null | grep -v -E '\.env|\.githooks|node_modules'; then
+    # Search in staged files only, excluding API configuration files and env files
+    if git diff --cached --name-only | grep -E '\.(js|jsx|ts|tsx)$' | grep -v -E '(lib/api\.(ts|js)|services/api\.js|\.env)' | xargs grep -l "$pattern" 2>/dev/null | grep -v -E '\.env|\.githooks|node_modules'; then
         echo -e "${RED}❌ Found hardcoded URL pattern: $pattern${NC}"
         echo -e "${YELLOW}Files containing hardcoded URLs:${NC}"
         
-        git diff --cached --name-only | grep -E '\.(js|jsx|ts|tsx)$' | xargs grep -n "$pattern" 2>/dev/null | grep -v -E '\.env|\.githooks|node_modules'
+        git diff --cached --name-only | grep -E '\.(js|jsx|ts|tsx)$' | grep -v -E '(lib/api\.(ts|js)|services/api\.js|\.env)' | xargs grep -n "$pattern" 2>/dev/null | grep -v -E '\.env|\.githooks|node_modules'
         
         VIOLATIONS_FOUND=true
     fi

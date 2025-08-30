@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiGet, apiPost, apiPut, apiDelete, apiClient } from '../../../lib/api';
+import api from '../../../services/api';
 
 const AdminPaymentMethodManagement = () => {
   const [paymentMethods, setPaymentMethods] = useState([]);

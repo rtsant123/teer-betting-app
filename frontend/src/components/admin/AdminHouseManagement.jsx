@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api';
+import api from '../../../services/api';
 
 const AdminHouseManagement = () => {
   const [houses, setHouses] = useState([]);
