@@ -103,21 +103,232 @@ check_service "PostgreSQL Database" "pg_isready -h $DB_HOST -p $DB_PORT"
 log_info "Checking Redis..."
 check_service "Redis Server" "redis-cli -h $REDIS_HOST -p $REDIS_PORT ping | grep -q PONG"
 
-# Check Docker containers (if running in Docker)
-if command -v docker >/dev/null 2>&1; then
-    log_info "Checking Docker containers..."
-    
-    # Check if containers are running
-    if docker-compose ps | grep -q "Up"; then
-        log_success "Docker containers are running"
-        
-        # List running containers
-        echo ""
-        echo "📋 Container Status:"
-        docker-compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+#!/bin/bash
+
+# =================================================================
+# TEER BETTING APP - HEALTH CHECK SCRIPT
+# =================================================================
+# This script monitors the health of all application components
+# =================================================================
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+APP_DIR="/opt/teer-betting-app"
+COMPOSE_FILE="docker-compose.prod.yml"
+HEALTH_LOG="/var/log/teer-health.log"
+
+# Function to print colored output
+print_status() {
+    echo -e "${GREEN}[✓]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[⚠]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[✗]${NC} $1"
+}
+
+print_info() {
+    echo -e "${BLUE}[ℹ]${NC} $1"
+}
+
+# Function to log with timestamp
+log_health() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $HEALTH_LOG
+}
+
+# Check if running from correct directory
+if [ ! -f "$APP_DIR/$COMPOSE_FILE" ]; then
+    print_error "Docker compose file not found. Please run from $APP_DIR"
+    exit 1
+fi
+
+cd $APP_DIR
+
+echo "🏥 Teer Betting App - Health Check Report"
+echo "========================================"
+echo "Time: $(date)"
+echo ""
+
+# 1. Check Docker service
+print_info "Checking Docker service..."
+if systemctl is-active --quiet docker; then
+    print_status "Docker service is running"
+    log_health "Docker service: OK"
+else
+    print_error "Docker service is not running"
+    log_health "Docker service: FAILED"
+    exit 1
+fi
+
+# 2. Check container status
+print_info "Checking container status..."
+containers=("teer_frontend_prod" "teer_backend_prod" "teer_db_prod" "teer_redis_prod")
+container_health=0
+
+for container in "${containers[@]}"; do
+    if docker ps --filter "name=$container" --filter "status=running" | grep -q $container; then
+        uptime=$(docker ps --filter "name=$container" --format "{{.Status}}")
+        print_status "$container: Running ($uptime)"
+        log_health "$container: Running"
     else
-        log_warning "Docker containers not found or not running"
+        print_error "$container: Not running"
+        log_health "$container: FAILED"
+        container_health=1
     fi
+done
+
+# 3. Check application endpoints
+print_info "Checking application endpoints..."
+
+# Frontend health
+if curl -f -s --max-time 10 http://localhost > /dev/null; then
+    print_status "Frontend: Responding"
+    log_health "Frontend: OK"
+else
+    print_error "Frontend: Not responding"
+    log_health "Frontend: FAILED"
+fi
+
+# Backend API health
+if curl -f -s --max-time 10 http://localhost:8001/health > /dev/null; then
+    print_status "Backend API: Responding"
+    log_health "Backend API: OK"
+    
+    # Test specific API endpoint
+    if curl -f -s --max-time 10 http://localhost:8001/api/v1/rounds/houses > /dev/null; then
+        print_status "Backend API endpoints: Working"
+        log_health "Backend API endpoints: OK"
+    else
+        print_warning "Backend API: Core endpoint may have issues"
+        log_health "Backend API endpoints: WARNING"
+    fi
+else
+    print_error "Backend API: Not responding"
+    log_health "Backend API: FAILED"
+fi
+
+# Database health
+if docker-compose -f $COMPOSE_FILE exec -T db pg_isready -U teer_admin > /dev/null 2>&1; then
+    print_status "Database: Connected"
+    log_health "Database: OK"
+else
+    print_error "Database: Connection failed"
+    log_health "Database: FAILED"
+fi
+
+# 4. Check resource usage
+print_info "Checking resource usage..."
+
+# Memory usage
+MEMORY_USAGE=$(free | awk 'FNR==2{printf "%.0f", ($3/($3+$4))*100}')
+if [ "$MEMORY_USAGE" -lt 85 ]; then
+    print_status "Memory usage: ${MEMORY_USAGE}%"
+else
+    print_warning "Memory usage: ${MEMORY_USAGE}% (High)"
+fi
+log_health "Memory usage: ${MEMORY_USAGE}%"
+
+# Disk usage
+DISK_USAGE=$(df / | awk 'FNR==2{print $5}' | sed 's/%//')
+if [ "$DISK_USAGE" -lt 85 ]; then
+    print_status "Disk usage: ${DISK_USAGE}%"
+else
+    print_warning "Disk usage: ${DISK_USAGE}% (High)"
+fi
+log_health "Disk usage: ${DISK_USAGE}%"
+
+# CPU load
+CPU_LOAD=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | sed 's/,//')
+print_info "CPU load average: $CPU_LOAD"
+log_health "CPU load: $CPU_LOAD"
+
+# 5. Check Docker container resources
+print_info "Checking container resource usage..."
+docker stats --no-stream --format "table {{.Container}}	{{.CPUPerc}}	{{.MemUsage}}" | grep teer_ || print_warning "Could not get container stats"
+
+# 6. Check log sizes
+print_info "Checking log file sizes..."
+LOG_SIZE=$(du -sh /var/log/teer-*.log 2>/dev/null | awk '{total+=$1} END {print total"K"}' || echo "No logs")
+print_info "Log files size: $LOG_SIZE"
+
+# 7. Network connectivity test
+print_info "Testing external connectivity..."
+if ping -c 1 8.8.8.8 > /dev/null 2>&1; then
+    print_status "Internet connectivity: OK"
+else
+    print_warning "Internet connectivity: Issues detected"
+fi
+
+# 8. Generate summary
+echo ""
+echo "📊 Health Check Summary"
+echo "======================"
+
+if [ $container_health -eq 0 ]; then
+    print_status "All containers are running"
+    OVERALL_STATUS="HEALTHY"
+else
+    print_error "Some containers have issues"
+    OVERALL_STATUS="UNHEALTHY"
+fi
+
+# Check if any critical issues
+CRITICAL_ISSUES=0
+if ! curl -f -s --max-time 5 http://localhost > /dev/null; then
+    CRITICAL_ISSUES=1
+fi
+if ! curl -f -s --max-time 5 http://localhost:8001/health > /dev/null; then
+    CRITICAL_ISSUES=1
+fi
+
+if [ $CRITICAL_ISSUES -eq 0 ]; then
+    echo -e "${GREEN}🟢 Overall Status: HEALTHY${NC}"
+    log_health "Overall status: HEALTHY"
+else
+    echo -e "${RED}🔴 Overall Status: CRITICAL ISSUES DETECTED${NC}"
+    log_health "Overall status: CRITICAL"
+    
+    echo ""
+    echo "🚨 Recommended Actions:"
+    echo "1. Check application logs: ~/teer-logs.sh"
+    echo "2. Restart services: docker-compose -f $COMPOSE_FILE restart"
+    echo "3. Check system resources: htop"
+    echo "4. Review error logs: tail -f /var/log/teer-*.log"
+fi
+
+# 9. Generate alerts if needed
+if [ $CRITICAL_ISSUES -eq 1 ] || [ "$MEMORY_USAGE" -gt 90 ] || [ "$DISK_USAGE" -gt 90 ]; then
+    echo ""
+    echo "🚨 ALERT: Critical issues detected!"
+    echo "Timestamp: $(date)"
+    echo "Issues: Container health=$container_health, Memory=${MEMORY_USAGE}%, Disk=${DISK_USAGE}%"
+    
+    # Log critical alert
+    log_health "CRITICAL ALERT: Issues detected - Memory: ${MEMORY_USAGE}%, Disk: ${DISK_USAGE}%"
+    
+    # Could send notification here (email, webhook, etc.)
+fi
+
+echo ""
+echo "📋 Quick Commands:"
+echo "View logs: ~/teer-logs.sh"
+echo "App status: ~/teer-status.sh"
+echo "Restart app: cd $APP_DIR && docker-compose -f $COMPOSE_FILE restart"
+
+# Exit with appropriate code
+if [ $CRITICAL_ISSUES -eq 0 ]; then
+    exit 0
+else
+    exit 1
 fi
 
 # Check API endpoints

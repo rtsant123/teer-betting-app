@@ -1,22 +1,40 @@
 import axios from 'axios';
 // Auto-detect API base URL for different environments
 const getApiBaseUrl = () => {
-  // If explicitly set, use it
+  // If explicitly set, use it (for production)
   if (process.env.REACT_APP_API_BASE_URL) {
+    console.log('Using configured API URL:', process.env.REACT_APP_API_BASE_URL);
     return process.env.REACT_APP_API_BASE_URL;
   }
   
   // Auto-detect based on current location
   const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  const port = window.location.port;
   
-  if (hostname.includes('github.dev')) {
-    // GitHub Codespaces - use nginx proxy instead of direct backend
+  console.log('Auto-detecting API URL for:', { hostname, protocol, port });
+  
+  // GitHub Codespaces
+  if (hostname.includes('github.dev') || hostname.includes('codespaces')) {
     return `/api/v1`;
-  } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    // Local development
+  } 
+  // Local development
+  else if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:8001/api/v1';
-  } else {
-    // Production fallback
+  } 
+  // Production with custom port (VPS with IP)
+  else if (port === '80' || port === '443' || port === '') {
+    // If on standard ports, assume backend is on :8001 or use proxy
+    if (hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      // IP address - likely VPS deployment
+      return `http://${hostname}:8001/api/v1`;
+    } else {
+      // Domain - use proxy
+      return '/api/v1';
+    }
+  } 
+  // Fallback
+  else {
     return '/api/v1';
   }
 };
