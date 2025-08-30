@@ -84,37 +84,45 @@ async def get_results_overview(
 
 @router.get("/pending")
 async def get_pending_results(
+    days_back: int = 7,
     current_admin: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Get rounds that are ready for result publishing"""
+    """Get ALL rounds that need results - improved logic for admin convenience"""
     
     # Update round statuses first
     from app.services.teer_scheduler import TeerSchedulerService
     scheduler = TeerSchedulerService(db)
     scheduler.update_round_statuses()
     
-    # Get rounds ready for results with raw SQL for simplicity
-    # Exclude FORECAST rounds since they are automatically processed when FR and SR are published
-    now = datetime.now(timezone.utc)
+    # Get ALL rounds from recent days that don't have results yet
+    # This allows admin to see and update results anytime, even future rounds
+    start_date = datetime.now(timezone.utc) - timedelta(days=days_back)
+    
     query = text("""
     SELECT r.id, r.house_id, h.name as house_name, r.round_type, r.status, 
-           r.scheduled_time, r.betting_closes_at, r.actual_time, r.result, r.created_at
+           r.scheduled_time, r.betting_closes_at, r.actual_time, r.result, r.created_at,
+           CASE 
+               WHEN r.betting_closes_at <= :now_param THEN 'ready'
+               ELSE 'scheduled'
+           END as result_status
     FROM rounds r 
     JOIN houses h ON r.house_id = h.id 
-    WHERE r.betting_closes_at <= :now_param 
+    WHERE r.created_at >= :start_date
     AND r.result IS NULL 
-    AND r.status IN ('SCHEDULED', 'ACTIVE')
     AND r.round_type IN ('FR', 'SR')
-    ORDER BY r.betting_closes_at DESC
+    AND h.is_active = true
+    ORDER BY r.scheduled_time DESC, h.name, r.round_type
     """)
     
-    result = db.execute(query, {"now_param": now})
+    result = db.execute(query, {"now_param": datetime.now(timezone.utc), "start_date": start_date})
     rounds = result.fetchall()
     
-    # Convert to dict format
+    # Convert to dict format with enhanced information
     response_data = []
     for row in rounds:
+        betting_closed = row[6] <= datetime.now(timezone.utc) if row[6] else False
+        
         response_data.append({
             "id": row[0],
             "house_id": row[1], 
@@ -125,7 +133,11 @@ async def get_pending_results(
             "betting_closes_at": row[6].isoformat() if row[6] else None,
             "actual_time": row[7].isoformat() if row[7] else None,
             "result": row[8],
-            "created_at": row[9].isoformat() if row[9] else None
+            "created_at": row[9].isoformat() if row[9] else None,
+            "result_status": row[10],
+            "betting_closed": betting_closed,
+            "can_update_result": True,  # Admin can always update results
+            "is_past_due": betting_closed
         })
     
     return response_data
@@ -158,11 +170,12 @@ async def publish_result(
     # Check if round is ready for results
     betting_closed = round_obj.betting_closes_at <= datetime.now(timezone.utc)
     
-    if not betting_closed:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot publish results before betting deadline"
-        )
+    # REMOVED RESTRICTION: Admin can update results anytime for convenience
+    # if not betting_closed:
+    #     raise HTTPException(
+    #         status_code=400,
+    #         detail="Cannot publish results before betting deadline"
+    #     )
     
     if round_obj.result is not None:
         raise HTTPException(
@@ -249,6 +262,16 @@ async def publish_result(
         
         db.commit()
         
+        # NEW LOGIC: Auto-create next day rounds if both FR and SR results are now published
+        next_day_creation_result = None
+        try:
+            from app.services.teer_scheduler import TeerSchedulerService
+            scheduler = TeerSchedulerService(db)
+            next_day_creation_result = scheduler.create_next_day_rounds_after_results(round_obj.house_id)
+        except Exception as e:
+            # Don't fail the result publication if next day creation fails
+            next_day_creation_result = {"created": False, "reason": f"Error: {str(e)}"}
+        
         return {
             "message": "Result published successfully",
             "round_id": round_id,
@@ -258,7 +281,8 @@ async def publish_result(
             "regular_winners": regular_winners,
             "forecast_winners": forecast_winners,
             "total_winners": regular_winners + forecast_winners,
-            "forecast_details": forecast_details
+            "forecast_details": forecast_details,
+            "next_day_rounds": next_day_creation_result
         }
         
     except Exception as e:
@@ -266,6 +290,60 @@ async def publish_result(
         raise HTTPException(
             status_code=500,
             detail=f"Error publishing result: {str(e)}"
+        )
+
+@router.post("/create-next-day-rounds/{house_id}")
+async def create_next_day_rounds(
+    house_id: int,
+    current_admin: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Manually trigger next day round creation for a house"""
+    try:
+        from app.services.teer_scheduler import TeerSchedulerService
+        scheduler = TeerSchedulerService(db)
+        result = scheduler.create_next_day_rounds_after_results(house_id)
+        
+        if result.get("created"):
+            return {
+                "success": True,
+                "message": f"Next day rounds created successfully for {result.get('house_name')}",
+                "details": result
+            }
+        else:
+            return {
+                "success": False,
+                "message": result.get("reason", "Failed to create rounds"),
+                "details": result
+            }
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating next day rounds: {str(e)}"
+        )
+
+@router.post("/schedule-tomorrow")
+async def schedule_tomorrow_rounds(
+    current_admin: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Manually trigger tomorrow's round scheduling for all houses"""
+    try:
+        from app.services.teer_scheduler import TeerSchedulerService
+        scheduler = TeerSchedulerService(db)
+        result = scheduler.schedule_daily_rounds()
+        
+        return {
+            "success": True,
+            "message": "Tomorrow's rounds scheduled successfully",
+            "details": result
+        }
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error scheduling tomorrow's rounds: {str(e)}"
         )
 
 @router.get("/latest", response_model=List[ResultsOverview])

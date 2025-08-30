@@ -49,65 +49,96 @@ const AdminPaymentMethodManagement = () => {
     // No separate endpoint needed
   };
   const handleQRUpload = async (file, paymentMethodId = null) => {
-    // QR codes are now managed directly in payment method details
-    // This function is kept for compatibility but does nothing
-    return null;
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Upload payment method image
+      const uploadResponse = await apiClient.post('/uploads/image', formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (uploadResponse.data && uploadResponse.data.url) {
+        return uploadResponse.data.url; // Return the uploaded image URL
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error uploading payment method image:', error);
+      throw error;
+    }
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      
+      // Upload image first if selected
+      let imageUrl = null;
+      if (selectedQRFile) {
+        imageUrl = await handleQRUpload(selectedQRFile);
+      }
+      
       // Auto-generate details based on payment type
       let parsedDetails;
       switch (formData.type) {
         case 'UPI':
           parsedDetails = { 
             upi_id: formData.admin_contact || '',
-            qr_supported: true 
+            image_url: imageUrl // Add uploaded image URL
           };
           break;
         case 'BANK':
           parsedDetails = { 
             account_number: '',
             ifsc_code: '',
-            bank_name: '' 
+            bank_name: '',
+            image_url: imageUrl // Banks can also have images
           };
           break;
         case 'WALLET':
           parsedDetails = { 
-            wallet_id: '',
-            provider: '' 
+            wallet_id: formData.admin_contact || '',
+            provider: formData.name || '',
+            image_url: imageUrl // Wallets definitely need images
           };
           break;
         case 'CRYPTO':
           parsedDetails = { 
             wallet_address: '',
-            currency: 'USDT' 
+            currency: 'USDT',
+            image_url: imageUrl // Crypto can have images too
           };
           break;
         default:
-          parsedDetails = {};
+          parsedDetails = {
+            image_url: imageUrl
+          };
       }
+      
       // Prepare data with parsed details
       const submitData = {
         ...formData,
         details: parsedDetails
       };
+      
       const url = editingId 
         ? `/admin/payment-methods/${editingId}`
         : '/admin/payment-methods';
       const method = editingId ? 'PUT' : 'POST';
+      
       const response = await apiClient({
         method,
         url,
         data: submitData,
         headers: { Authorization: `Bearer ${token}` }
       });
-      // If QR file is selected, upload it
-      if (selectedQRFile && response.data) {
-        const paymentMethodId = response.data.id || editingId;
-        await handleQRUpload(selectedQRFile, paymentMethodId);
-      }
+      
+      // Reset form
       setFormData({
         name: '',
         type: '',
@@ -124,6 +155,7 @@ const AdminPaymentMethodManagement = () => {
       setEditingId(null);
       fetchPaymentMethods();
       setError('');
+      
     } catch (err) {
       console.error('Error saving payment method:', err);
       if (err.response?.data?.detail) {
@@ -209,15 +241,24 @@ const AdminPaymentMethodManagement = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Upload QR Code</label>
+            <label className="block text-sm font-medium text-gray-700">Upload Payment Method Image</label>
             <input
               type="file"
-              accept=".jpg,.jpeg,.png,.gif,.webp,.svg"
+              accept=".jpg,.jpeg,.png,.gif,.webp"
               onChange={(e) => setSelectedQRFile(e.target.files[0])}
               className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
             {selectedQRFile && (
-              <div className="mt-2 text-sm text-gray-600">Selected: {selectedQRFile.name}</div>
+              <div className="mt-2">
+                <div className="text-sm text-gray-600 mb-2">Selected: {selectedQRFile.name}</div>
+                <div className="w-32 h-32 border border-gray-300 rounded-lg overflow-hidden">
+                  <img 
+                    src={URL.createObjectURL(selectedQRFile)} 
+                    alt="Payment Method Image Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
             )}
           </div>
           <div>
@@ -334,6 +375,9 @@ const AdminPaymentMethodManagement = () => {
                 Type
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payment Image
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -352,6 +396,24 @@ const AdminPaymentMethodManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {method.type}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {method.details?.image_url ? (
+                    <img 
+                      src={method.details.image_url}
+                      alt="Payment Method Image" 
+                      className="w-16 h-16 object-cover rounded border"
+                      onLoad={() => console.log('Admin image loaded successfully:', method.details.image_url)}
+                      onError={(e) => {
+                        console.error('Admin image failed to load:', method.details.image_url);
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                  ) : (
+                    <span className="text-gray-400 text-xs">No Image</span>
+                  )}
+                  <div className="hidden text-red-500 text-xs">Image not found</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

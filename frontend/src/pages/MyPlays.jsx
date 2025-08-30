@@ -82,20 +82,31 @@ const MyPlays = () => {
       const ticketAmount = ticket.total_amount || 0;
       acc.totalWagered += ticketAmount;
       
-      if (ticket.status?.toLowerCase() === 'won') {
-        const winnings = ticket.total_potential_payout || ticketAmount * 2;
+      // Check for won status and calculate actual winnings
+      const status = ticket.status?.toLowerCase();
+      if (status === 'won') {
+        // Use actual_payout if available, otherwise fall back to total_potential_payout
+        const winnings = ticket.actual_payout || ticket.total_potential_payout || ticketAmount * 2;
         acc.totalWinnings += winnings;
       }
       
       return acc;
     }, { totalBets: 0, totalWagered: 0, totalWinnings: 0 });
     
-    summary.winRate = summary.totalBets > 0 ? 
-      (ticketsList.filter(t => t.status?.toLowerCase() === 'won').length / summary.totalBets * 100) : 0;
+    const wonTickets = ticketsList.filter(t => t.status?.toLowerCase() === 'won').length;
+    summary.winRate = summary.totalBets > 0 ? (wonTickets / summary.totalBets * 100) : 0;
     summary.netProfit = summary.totalWinnings - summary.totalWagered;
     
     setPlaySummary(summary);
   }, []);
+
+  // Calculate status counts for tab display
+  const statusCounts = {
+    all: tickets.length,
+    pending: tickets.filter(t => t.status?.toLowerCase() === 'pending').length,
+    won: tickets.filter(t => t.status?.toLowerCase() === 'won').length,
+    lost: tickets.filter(t => t.status?.toLowerCase() === 'lost').length
+  };
 
   const loadMyTickets = useCallback(async () => {
     try {
@@ -170,11 +181,17 @@ const MyPlays = () => {
   };
 
   const filteredTickets = tickets.filter(ticket => {
-    const matchesTab = activeTab === 'all' || ticket.status?.toLowerCase() === activeTab;
-    const matchesHouse = filterHouse === 'all' || ticket.house_name?.toLowerCase().includes(filterHouse.toLowerCase());
+    // Normalize status comparison - handle both uppercase and lowercase
+    const ticketStatus = ticket.status?.toLowerCase() || '';
+    const matchesTab = activeTab === 'all' || ticketStatus === activeTab.toLowerCase();
+    
+    const matchesHouse = filterHouse === 'all' || 
+      ticket.house_name?.toLowerCase().includes(filterHouse.toLowerCase());
+    
     const matchesSearch = searchTerm === '' || 
       ticket.house_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.ticket_id?.toString().includes(searchTerm);
+    
     return matchesTab && matchesHouse && matchesSearch;
   });
 
@@ -230,8 +247,22 @@ const MyPlays = () => {
         <div className="max-w-4xl mx-auto px-4 py-6">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">My Plays</h1>
-            <p className="text-gray-600">Track your betting history and performance</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">My Plays</h1>
+                <p className="text-gray-600">Track your betting history and performance</p>
+              </div>
+              <Button
+                onClick={loadMyTickets}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           {/* Summary Cards */}
@@ -303,13 +334,20 @@ const MyPlays = () => {
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
                         activeTab === tab
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      <span>{tab.charAt(0).toUpperCase() + tab.slice(1)}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        activeTab === tab 
+                          ? 'bg-blue-500 text-blue-100' 
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {statusCounts[tab]}
+                      </span>
                     </button>
                   ))}
                 </div>

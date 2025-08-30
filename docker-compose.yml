@@ -30,7 +30,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres123@db:5432/teer_betting
       - SECRET_KEY=your-super-secret-key-change-in-production-$(date +%s)
       - DEBUG=True
-      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:80,http://localhost,http://127.0.0.1:80,http://127.0.0.1,http://frontend:80,http://teer_frontend:80
+      - ALLOWED_ORIGINS=https://effective-waddle-x5477gpx75g6cvj45-80.app.github.dev,https://effective-waddle-x5477gpx75g6cvj45-3000.app.github.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:80,http://localhost,http://127.0.0.1:80,http://127.0.0.1,http://frontend:80,http://teer_frontend:80
     volumes:
       - ./backend:/app
     ports:
@@ -51,10 +51,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_BASE_URL: http://backend:8000/api/v1
+        REACT_APP_API_BASE_URL: /api/v1
     container_name: teer_frontend
     environment:
-      - REACT_APP_API_BASE_URL=http://backend:8000/api/v1
+      - REACT_APP_API_BASE_URL=/api/v1
     ports:
       - "80:80"
     depends_on:

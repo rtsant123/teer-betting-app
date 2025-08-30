@@ -1,12 +1,12 @@
 import api from './api';
 export const paymentService = {
   // Get deposit methods only
-  getDepositMethods: () => {
-    return api.get('/wallet/payment-methods/deposit');
+  getDepositMethods: (queryParams = '') => {
+    return api.get(`/wallet/payment-methods/deposit${queryParams}`);
   },
   // Get withdrawal methods only  
-  getWithdrawalMethods: () => {
-    return api.get('/wallet/payment-methods/withdrawal');
+  getWithdrawalMethods: (queryParams = '') => {
+    return api.get(`/wallet/payment-methods/withdrawal${queryParams}`);
   },
   // Legacy method for backward compatibility
   getPublicPaymentMethods: (type = null) => {
@@ -19,4 +19,4 @@ export const paymentService = {
     return paymentService.getDepositMethods();
   }
 };
-export default paymentService;
+export default paymentService;

@@ -961,3 +961,17 @@ async def place_single_bet(
         )
     
     return ticket_response
+
+@router.post("/fix-pending-tickets")
+async def fix_pending_tickets(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Fix tickets that are stuck in pending status when their bets are completed"""
+    bet_service = EnhancedBetService(db)
+    updated_count = bet_service.fix_pending_ticket_statuses()
+    
+    return {
+        "message": f"Updated {updated_count} tickets from pending to final status",
+        "updated_count": updated_count
+    }

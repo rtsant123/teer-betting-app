@@ -173,7 +173,7 @@ async def get_withdrawal_payment_methods(db: Session = Depends(get_db)):
     """Get available payment methods for withdrawals"""
     try:
         methods = db.query(PaymentMethod).filter(
-            PaymentMethod.status == "ACTIVE",
+            PaymentMethod.status == PaymentMethodStatus.ACTIVE,
             PaymentMethod.supports_withdrawal == True
         ).all()
         

@@ -16,8 +16,8 @@ const PublicLanding = () => {
     try {
       setLoading(true);
       const [resultsResponse, housesWithRoundsResponse] = await Promise.all([
-        axios.get('http://localhost:8001/api/v1/rounds/results/latest?days_back=7').catch(() => ({ data: [] })),
-        axios.get('http://localhost:8001/api/v1/bet/houses-with-rounds').catch(() => ({ data: [] }))
+        axios.get('/api/v1/rounds/results/latest?days_back=7').catch(() => ({ data: [] })),
+        axios.get('/api/v1/bet/houses-with-rounds').catch(() => ({ data: [] }))
       ]);
       // Latest results endpoint returns direct array of grouped results
       setLatestResults(resultsResponse.data?.slice(0, 6) || []);

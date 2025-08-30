@@ -4,6 +4,7 @@ import { ArrowLeft, Target, Home, Dice1, Clock, Plus, Minus, DollarSign } from '
 import { toast } from 'react-hot-toast';
 import HeaderBar from './HeaderBar';
 import BottomNav from './BottomNav';
+import GameDateTimeDisplay from './GameDateTimeDisplay';
 import { Card, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -346,6 +347,18 @@ const GameModePage = ({
             LIVE
           </div>
         </div>
+      </div>
+
+      {/* Game Date & Time Display */}
+      <div className="px-3 sm:px-4 pt-3 sm:pt-4">
+        <GameDateTimeDisplay
+          scheduledTime={houseData?.rounds?.[playType]?.scheduled_time}
+          bettingClosesAt={houseData?.rounds?.[playType]?.betting_closes_at}
+          gameType={`${playType} ${title}`}
+          houseName={houseData.house.name}
+          compact={true}
+          showGameDay={false}
+        />
       </div>
 
       {/* Quick Selection for single digits */}

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import HeaderBar from '../components/common/HeaderBar';
 import BottomNav from '../components/common/BottomNav';
+import GameDateTimeDisplay from '../components/common/GameDateTimeDisplay';
 import { useWallet } from '../contexts/WalletContext';
 import { roundsService } from '../services/rounds';
 import { betService } from '../services/bet';
@@ -335,6 +336,16 @@ function BettingPage() {
       </div>
 
       <div className="flex-1 p-3 md:p-6 space-y-4 md:space-y-6 max-w-4xl mx-auto w-full">
+        {/* Game Date & Time Display */}
+        <GameDateTimeDisplay
+          scheduledTime={houseData.round.scheduled_time}
+          bettingClosesAt={houseData.round.bet_end_time}
+          gameType={`${gameType} ${playTypeConfig[playType]?.title}`}
+          houseName={houseData.house.name}
+          compact={false}
+          showGameDay={true}
+        />
+
         {/* Enhanced Deadline Info with Animation */}
         <div className={`text-center p-4 md:p-6 rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
           isActive 

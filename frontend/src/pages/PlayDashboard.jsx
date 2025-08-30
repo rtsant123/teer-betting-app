@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button';
 import BannerCarousel from '../components/common/BannerCarousel';
 import HeaderBar from '../components/common/HeaderBar';
 import BottomNav from '../components/common/BottomNav';
+import GameDateTimeDisplay from '../components/common/GameDateTimeDisplay';
 import { 
   Target, 
   Home, 
@@ -580,6 +581,19 @@ const PlayDashboard = () => {
                             LIVE
                           </div>
                         </div>
+                      </div>
+
+                      {/* Game Date & Time Display */}
+                      <div className="px-4 pt-2 pb-4">
+                        <GameDateTimeDisplay
+                          scheduledTime={gameTypes.FR?.scheduled_time || gameTypes.SR?.scheduled_time}
+                          bettingClosesAt={gameTypes.FR?.deadline || gameTypes.SR?.deadline}
+                          gameType="Games"
+                          houseName={house.name}
+                          compact={true}
+                          showGameDay={false}
+                          className="mb-3"
+                        />
                       </div>
 
                       {/* Game Options Grid */}

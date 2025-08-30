@@ -3515,3 +3515,40 @@ button:focus {
     font-size: 0.6875rem;
   }
 }
+
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Enhanced mobile form styles */
+@media (max-width: 640px) {
+  .mobile-form-input {
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+  }
+  
+  .mobile-form-select {
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+  }
+  
+  .mobile-form-button {
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .mobile-card-padding {
+    padding: 1rem;
+  }
+  
+  .mobile-spacing {
+    margin-bottom: 1rem;
+  }
+}

@@ -61,7 +61,7 @@ class TeerSchedulerService:
         return existing_count > 0
     
     def create_rounds_for_date(self, house: House, target_date: date) -> List[Round]:
-        """Create FR and SR rounds for a house on a specific date"""
+        """Create FR, SR, and FORECAST rounds for a house on a specific date"""
         rounds = []
         
         # Create FR Round
@@ -138,28 +138,94 @@ class TeerSchedulerService:
         return results
     
     def auto_schedule_tomorrow_after_completion(self) -> dict:
-        """Auto-schedule tomorrow's rounds when today's are completed"""
+        """Auto-schedule tomorrow's rounds - New improved logic"""
+        tomorrow = date.today() + timedelta(days=1)
+        
+        # Get houses that should run tomorrow
+        houses = self.get_houses_for_date(tomorrow)
+        if not houses:
+            return {
+                'scheduled': False,
+                'reason': 'No houses configured to run tomorrow'
+            }
+        
+        # Check if rounds already exist for tomorrow
+        existing_rounds = False
+        for house in houses:
+            if self.rounds_exist_for_date(house.id, tomorrow):
+                existing_rounds = True
+                break
+        
+        if existing_rounds:
+            return {
+                'scheduled': False,
+                'reason': 'Rounds already scheduled for tomorrow'
+            }
+        
+        # Create rounds for tomorrow regardless of today's completion status
+        # This ensures continuous scheduling
+        return self.schedule_daily_rounds(tomorrow)
+    
+    def create_next_day_rounds_after_results(self, house_id: int) -> dict:
+        """Create next day rounds only after BOTH FR and SR results are published"""
         today = date.today()
         tomorrow = today + timedelta(days=1)
         
-        # Check if all today's rounds are completed
-        today_start = datetime.combine(today, time.min).replace(tzinfo=timezone.utc)
-        today_end = datetime.combine(tomorrow, time.min).replace(tzinfo=timezone.utc)
+        # Check if both FR and SR results are published for today
+        start_datetime = datetime.combine(today, time.min).replace(tzinfo=timezone.utc)
+        end_datetime = datetime.combine(today + timedelta(days=1), time.min).replace(tzinfo=timezone.utc)
         
-        pending_rounds = self.db.query(Round).filter(
-            Round.scheduled_time >= today_start,
-            Round.scheduled_time < today_end,
-            Round.status.in_([RoundStatus.SCHEDULED, RoundStatus.ACTIVE])
-        ).count()
+        today_rounds = self.db.query(Round).filter(
+            Round.house_id == house_id,
+            Round.scheduled_time >= start_datetime,
+            Round.scheduled_time < end_datetime,
+            Round.round_type.in_([RoundType.FR, RoundType.SR])
+        ).all()
         
-        if pending_rounds > 0:
+        fr_round = next((r for r in today_rounds if r.round_type == RoundType.FR), None)
+        sr_round = next((r for r in today_rounds if r.round_type == RoundType.SR), None)
+        
+        # Check if both rounds have results
+        if not (fr_round and sr_round and fr_round.result is not None and sr_round.result is not None):
             return {
-                'scheduled': False,
-                'reason': f'{pending_rounds} rounds still pending for today'
+                'created': False,
+                'reason': 'Both FR and SR results must be published first',
+                'fr_result_published': fr_round.result is not None if fr_round else False,
+                'sr_result_published': sr_round.result is not None if sr_round else False
             }
         
-        # All today's rounds are done, schedule tomorrow
-        return self.schedule_daily_rounds(tomorrow)
+        # Check if house should run tomorrow
+        house = self.db.query(House).filter(House.id == house_id).first()
+        if not house or not self.should_house_run_today(house, tomorrow):
+            return {
+                'created': False,
+                'reason': 'House not configured to run tomorrow'
+            }
+        
+        # Check if rounds already exist for tomorrow
+        if self.rounds_exist_for_date(house_id, tomorrow):
+            return {
+                'created': False,
+                'reason': 'Rounds already exist for tomorrow'
+            }
+        
+        # Create rounds for tomorrow
+        try:
+            rounds = self.create_rounds_for_date(house, tomorrow)
+            self.db.commit()
+            
+            return {
+                'created': True,
+                'rounds_created': len(rounds),
+                'date': tomorrow.isoformat(),
+                'house_name': house.name
+            }
+        except Exception as e:
+            self.db.rollback()
+            return {
+                'created': False,
+                'reason': f'Error creating rounds: {str(e)}'
+            }
     
     def get_forecast_rounds(self, house_id: int, target_date: date = None) -> dict:
         """Get FR and SR rounds for forecast betting"""

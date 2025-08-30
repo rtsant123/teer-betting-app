@@ -4,6 +4,7 @@ import { ArrowLeft, Home, Clock, Plus, Minus, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import BottomNav from '../components/common/BottomNav';
 import HeaderBar from '../components/common/HeaderBar';
+import GameDateTimeDisplay from '../components/common/GameDateTimeDisplay';
 import { useWallet } from '../contexts/WalletContext';
 import api from '../services/api';
 
@@ -222,34 +223,14 @@ const SRHousePage = () => {
             
             <div className="w-9"></div>
           </div>
-        </div>
-      </div>
-
-      {/* Round Info Banner */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Home className="w-6 h-6 mr-3" />
-              <div>
-                <div className="font-bold text-lg">SR House</div>
-                <div className="text-green-100 text-sm">Second round house digit</div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="font-bold text-xl">{payoutRate}x</div>
-              <div className="text-green-100 text-xs">Payout</div>
-            </div>
-          </div>
           
-          <div className="mt-3 pt-3 border-t border-green-400 flex items-center justify-between">
-            <div className="flex items-center">
-              <Clock className="w-4 h-4 mr-2" />
-              <span className="text-sm">Closes in: {timeUntilClose}</span>
-            </div>
-            <div className="bg-green-400 px-2 py-1 rounded text-xs font-semibold">
-              LIVE
-            </div>
+          {/* Game Date and Time */}
+          <div className="mt-3">
+            <GameDateTimeDisplay 
+              gameData={houseData}
+              gameType="SR"
+              mode="full"
+            />
           </div>
         </div>
       </div>

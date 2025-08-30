@@ -201,3 +201,53 @@ async def delete_file(
             status_code=500,
             detail=f"Failed to delete file: {str(e)}"
         )
+
+
+@router.post("/qr-code")
+async def upload_qr_code(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Upload a QR code image for payment methods"""
+    
+    # Validate file
+    if not validate_image_file(file):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed."
+        )
+    
+    # Read file content
+    file_content = await file.read()
+    
+    # Check file size
+    if len(file_content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size too large. Maximum allowed size is {MAX_FILE_SIZE // (1024 * 1024)}MB."
+        )
+    
+    # Generate unique filename
+    file_extension = Path(file.filename).suffix.lower()
+    unique_filename = f"qr_{uuid.uuid4()}{file_extension}"
+    
+    # Save file
+    file_path = UPLOAD_DIR / "qr_codes" / unique_filename
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            buffer.write(file_content)
+        
+        # Return the URL path
+        return {
+            "url": f"/uploads/qr_codes/{unique_filename}",
+            "filename": unique_filename,
+            "original_filename": file.filename,
+            "size": len(file_content)
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save QR code: {str(e)}"
+        )

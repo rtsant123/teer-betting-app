@@ -618,8 +618,66 @@ class EnhancedBetService:
                 # Reject referral commissions for losing bets
                 referral_service.process_bet_loss_commission(bet)
         
+        # Update ticket statuses based on their bets
+        self._update_ticket_statuses_for_round(round_id)
+        
         self.db.commit()
         return winners
+    
+    def _update_ticket_statuses_for_round(self, round_id: int):
+        """Update ticket statuses based on the status of their constituent bets"""
+        # Get all tickets that have bets for this round
+        tickets_with_bets = self.db.query(BetTicket.ticket_id).join(Bet).filter(
+            Bet.round_id == round_id
+        ).distinct().all()
+        
+        for (ticket_id,) in tickets_with_bets:
+            self._update_ticket_status(ticket_id)
+    
+    def _update_ticket_status(self, ticket_id: str):
+        """Update a ticket's status based on all its bets"""
+        ticket = self.db.query(BetTicket).filter(BetTicket.ticket_id == ticket_id).first()
+        if not ticket:
+            return
+            
+        # Get all bets for this ticket
+        bets = self.db.query(Bet).filter(Bet.ticket_id == ticket_id).all()
+        if not bets:
+            return
+            
+        # Check bet statuses
+        bet_statuses = [bet.status for bet in bets]
+        
+        # If any bet is still pending, ticket remains pending
+        if BetStatus.PENDING in bet_statuses:
+            ticket.status = BetStatus.PENDING
+        # If any bet won, ticket is won (even if some lost)
+        elif BetStatus.WON in bet_statuses:
+            ticket.status = BetStatus.WON
+            # Calculate total actual payout
+            ticket.actual_payout = sum(bet.actual_payout or 0 for bet in bets if bet.status == BetStatus.WON)
+        # If all bets lost, ticket is lost
+        elif all(status == BetStatus.LOST for status in bet_statuses):
+            ticket.status = BetStatus.LOST
+            ticket.actual_payout = 0
+    
+    def fix_pending_ticket_statuses(self):
+        """Fix any tickets that are stuck in pending status when their bets are completed"""
+        # Get all tickets that are still pending
+        pending_tickets = self.db.query(BetTicket).filter(BetTicket.status == BetStatus.PENDING).all()
+        
+        updated_count = 0
+        for ticket in pending_tickets:
+            # Check if all bets for this ticket are completed (won/lost)
+            bets = self.db.query(Bet).filter(Bet.ticket_id == ticket.ticket_id).all()
+            if bets and all(bet.status != BetStatus.PENDING for bet in bets):
+                self._update_ticket_status(ticket.ticket_id)
+                updated_count += 1
+        
+        if updated_count > 0:
+            self.db.commit()
+            
+        return updated_count
     
     def process_forecast_bets(self, house_id: int, fr_result: str, sr_result: str) -> dict:
         """Process forecast bets when both FR and SR results are available"""
@@ -730,6 +788,9 @@ class EnhancedBetService:
                 # Reject referral commissions for losing bets
                 referral_service.process_bet_loss_commission(bet)
         
+        # Update ticket statuses for forecast bets
+        self._update_ticket_statuses_for_forecast_bets(house_id)
+        
         self.db.commit()
         
         return {
@@ -739,6 +800,23 @@ class EnhancedBetService:
             "fr_result": fr_result,
             "sr_result": sr_result
         }
+    
+    def _update_ticket_statuses_for_forecast_bets(self, house_id: int):
+        """Update ticket statuses for forecast bets in a specific house"""
+        # Get all tickets that have forecast bets for this house
+        forecast_tickets = self.db.query(BetTicket.ticket_id).join(Bet).filter(
+            and_(
+                Bet.bet_type == BetType.FORECAST,
+                Bet.fr_round_id.isnot(None),
+                Bet.sr_round_id.isnot(None)
+            )
+        ).distinct().all()
+        
+        # Filter to tickets for this house
+        for (ticket_id,) in forecast_tickets:
+            ticket = self.db.query(BetTicket).filter(BetTicket.ticket_id == ticket_id).first()
+            if ticket and ticket.house_id == house_id:
+                self._update_ticket_status(ticket_id)
     
     def _check_bet_winner(self, bet: Bet, result: int) -> bool:
         """Check if a bet wins based on the result"""

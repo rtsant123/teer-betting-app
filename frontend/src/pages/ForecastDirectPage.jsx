@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Target, Clock, Plus, Minus, DollarSign } from 'lucide-react';
+import { ArrowLeft, Clock, Plus, Minus, DollarSign, X, Star, Target } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import BottomNav from '../components/common/BottomNav';
 import HeaderBar from '../components/common/HeaderBar';
+import GameDateTimeDisplay from '../components/common/GameDateTimeDisplay';
 import { useWallet } from '../contexts/WalletContext';
 import api from '../services/api';
 
@@ -269,33 +270,16 @@ const ForecastDirectPage = () => {
         </div>
       </div>
 
-      {/* Round Info Banner */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
-        <div className="max-w-lg mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Target className="w-5 sm:w-6 h-5 sm:h-6 mr-2 sm:mr-3" />
-              <div>
-                <div className="font-bold text-base sm:text-lg">Forecast Direct</div>
-                <div className="text-purple-100 text-xs sm:text-sm">Predict exact FR & SR numbers</div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="font-bold text-lg sm:text-xl">{payoutRate}x</div>
-              <div className="text-purple-100 text-xs">Payout</div>
-            </div>
-          </div>
-          
-          <div className="mt-3 pt-3 border-t border-purple-400 flex items-center justify-between">
-            <div className="flex items-center">
-              <Clock className="w-4 h-4 mr-2" />
-              <span className="text-sm">Closes in: {timeUntilClose}</span>
-            </div>
-            <div className="bg-purple-400 px-2 py-1 rounded text-xs font-semibold">
-              LIVE
-            </div>
-          </div>
-        </div>
+      {/* Game Date & Time Display */}
+      <div className="max-w-lg mx-auto px-4 py-4">
+        <GameDateTimeDisplay
+          scheduledTime={houseData?.rounds?.FORECAST?.scheduled_time}
+          bettingClosesAt={houseData?.rounds?.FORECAST?.betting_closes_at}
+          gameType="Forecast Direct"
+          houseName={houseData.house.name}
+          compact={true}
+          showGameDay={false}
+        />
       </div>
 
       {/* Main Content */}

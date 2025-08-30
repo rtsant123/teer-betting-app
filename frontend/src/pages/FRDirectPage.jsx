@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import api from '../services/api';
 import BottomNav from '../components/common/BottomNav';
 import HeaderBar from '../components/common/HeaderBar';
+import GameDateTimeDisplay from '../components/common/GameDateTimeDisplay';
 import { useWallet } from '../contexts/WalletContext';
 
 const FRDirectPage = () => {
@@ -222,27 +223,19 @@ const FRDirectPage = () => {
             
             <div className="w-9"></div>
           </div>
-        </div>
-      </div>
-
-      {/* Round Info Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-2" />
-                <span className="text-sm opacity-90">Closes in</span>
-              </div>
-              <div className="text-lg font-semibold">{timeUntilClose}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm opacity-90">Payout Rate</div>
-              <div className="text-lg font-semibold">{houseData?.house?.fr_direct_payout_rate || 80}x</div>
-            </div>
+          
+          {/* Game Date and Time */}
+          <div className="mt-3">
+            <GameDateTimeDisplay 
+              gameData={houseData}
+              gameType="FR"
+              mode="full"
+            />
           </div>
         </div>
       </div>
+
+  {/* Round Info Banner - removed duplicate deadline display, only GameDateTimeDisplay remains above */}
 
       {/* Main Content */}
       <div className="max-w-lg mx-auto px-4 py-6 pb-40 space-y-6">

@@ -1,7 +1,29 @@
 import axios from 'axios';
+// Auto-detect API base URL for different environments
+const getApiBaseUrl = () => {
+  // If explicitly set, use it
+  if (process.env.REACT_APP_API_BASE_URL) {
+    return process.env.REACT_APP_API_BASE_URL;
+  }
+  
+  // Auto-detect based on current location
+  const hostname = window.location.hostname;
+  
+  if (hostname.includes('github.dev')) {
+    // GitHub Codespaces - use nginx proxy instead of direct backend
+    return `/api/v1`;
+  } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Local development
+    return 'http://localhost:8001/api/v1';
+  } else {
+    // Production fallback
+    return '/api/v1';
+  }
+};
+
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api/v1',
+  baseURL: getApiBaseUrl(),
   timeout: 10000,
   withCredentials: true,
   headers: {

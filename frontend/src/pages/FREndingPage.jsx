@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, Plus, Minus, DollarSign, Dice1 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import BottomNav from '../components/common/BottomNav';
 import HeaderBar from '../components/common/HeaderBar';
+import GameDateTimeDisplay from '../components/common/GameDateTimeDisplay';
 import { useWallet } from '../contexts/WalletContext';
 import api from '../services/api';
 
@@ -225,33 +226,16 @@ const FREndingPage = () => {
         </div>
       </div>
 
-      {/* Round Info Banner */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Dice1 className="w-6 h-6 mr-3" />
-              <div>
-                <div className="font-bold text-lg">FR Ending</div>
-                <div className="text-indigo-100 text-sm">First round ending digit</div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="font-bold text-xl">{payoutRate}x</div>
-              <div className="text-indigo-100 text-xs">Payout</div>
-            </div>
-          </div>
-          
-          <div className="mt-3 pt-3 border-t border-indigo-400 flex items-center justify-between">
-            <div className="flex items-center">
-              <Clock className="w-4 h-4 mr-2" />
-              <span className="text-sm">Closes in: {timeUntilClose}</span>
-            </div>
-            <div className="bg-indigo-400 px-2 py-1 rounded text-xs font-semibold">
-              LIVE
-            </div>
-          </div>
-        </div>
+      {/* Game Date & Time Display */}
+      <div className="max-w-lg mx-auto px-4 py-4">
+        <GameDateTimeDisplay
+          scheduledTime={houseData?.rounds?.FR?.scheduled_time}
+          bettingClosesAt={houseData?.rounds?.FR?.betting_closes_at}
+          gameType="FR Ending"
+          houseName={houseData.house.name}
+          compact={true}
+          showGameDay={false}
+        />
       </div>
 
       {/* Main Content */}
