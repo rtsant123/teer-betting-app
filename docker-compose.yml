@@ -30,7 +30,10 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres123@db:5432/teer_betting
       - SECRET_KEY=your-super-secret-key-change-in-production-$(date +%s)
       - DEBUG=True
-      - ALLOWED_ORIGINS=https://effective-waddle-x5477gpx75g6cvj45-80.app.github.dev,https://effective-waddle-x5477gpx75g6cvj45-3000.app.github.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:80,http://localhost,http://127.0.0.1:80,http://127.0.0.1,http://frontend:80,http://teer_frontend:80
+      - BACKEND_CORS_ORIGINS=https://effective-waddle-x5477gpx75g6cvj45-80.app.github.dev,https://effective-waddle-x5477gpx75g6cvj45-3000.app.github.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:80,http://localhost,http://127.0.0.1:80,http://127.0.0.1,http://frontend:80,http://teer_frontend:80,http://165.22.61.56:3000,http://165.22.61.56:80,http://165.22.61.56
+      - ALLOWED_ORIGINS=https://effective-waddle-x5477gpx75g6cvj45-80.app.github.dev,https://effective-waddle-x5477gpx75g6cvj45-3000.app.github.dev,http://localhost:3000,http://127.0.0.1:3000,http://localhost:80,http://localhost,http://127.0.0.1:80,http://127.0.0.1,http://frontend:80,http://teer_frontend:80,http://165.22.61.56:3000,http://165.22.61.56:80,http://165.22.61.56
+      - VPS_IP=165.22.61.56
+      - ENVIRONMENT=production
     volumes:
       - ./backend:/app
     ports:

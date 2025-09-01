@@ -1,12 +1,13 @@
 """
 Teer Round Auto-Scheduler Service
-Handles automatic daily round creation and management
+Handles automatic daily round creation and management with proper timezone support
 """
 
 from datetime import datetime, date, time, timedelta, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
+import pytz
 
 from app.models.house import House
 from app.models.round import Round, RoundType, RoundStatus
@@ -61,38 +62,48 @@ class TeerSchedulerService:
         return existing_count > 0
     
     def create_rounds_for_date(self, house: House, target_date: date) -> List[Round]:
-        """Create FR, SR, and FORECAST rounds for a house on a specific date"""
+        """Create FR, SR, and FORECAST rounds for a house on a specific date with proper timezone handling"""
         rounds = []
         
-        # Create FR Round
-        fr_datetime = datetime.combine(target_date, house.fr_time).replace(tzinfo=timezone.utc)
-        betting_closes_fr = fr_datetime - timedelta(minutes=house.betting_window_minutes)
-        
-        fr_round = Round(
-            house_id=house.id,
-            round_type=RoundType.FR,
-            scheduled_time=fr_datetime,
-            betting_closes_at=betting_closes_fr,
-            status=RoundStatus.SCHEDULED
-        )
-        self.db.add(fr_round)
-        rounds.append(fr_round)
-        
-        # Create SR Round
-        sr_datetime = datetime.combine(target_date, house.sr_time).replace(tzinfo=timezone.utc)
-        betting_closes_sr = sr_datetime - timedelta(minutes=house.betting_window_minutes)
-        
-        sr_round = Round(
-            house_id=house.id,
-            round_type=RoundType.SR,
-            scheduled_time=sr_datetime,
-            betting_closes_at=betting_closes_sr,
-            status=RoundStatus.SCHEDULED
-        )
-        self.db.add(sr_round)
-        rounds.append(sr_round)
-        
-        return rounds
+        try:
+            # Create FR Round with timezone-aware datetime
+            fr_datetime = house.get_local_datetime(target_date, house.fr_time)
+            # Convert to UTC for storage
+            fr_datetime_utc = fr_datetime.astimezone(pytz.UTC)
+            betting_closes_fr = house.get_betting_deadline(fr_datetime_utc)
+            
+            fr_round = Round(
+                house_id=house.id,
+                round_type=RoundType.FR,
+                scheduled_time=fr_datetime_utc,
+                betting_closes_at=betting_closes_fr,
+                status=RoundStatus.SCHEDULED
+            )
+            self.db.add(fr_round)
+            rounds.append(fr_round)
+            
+            # Create SR Round with timezone-aware datetime
+            sr_datetime = house.get_local_datetime(target_date, house.sr_time)
+            # Convert to UTC for storage
+            sr_datetime_utc = sr_datetime.astimezone(pytz.UTC)
+            betting_closes_sr = house.get_betting_deadline(sr_datetime_utc)
+            
+            sr_round = Round(
+                house_id=house.id,
+                round_type=RoundType.SR,
+                scheduled_time=sr_datetime_utc,
+                betting_closes_at=betting_closes_sr,
+                status=RoundStatus.SCHEDULED
+            )
+            self.db.add(sr_round)
+            rounds.append(sr_round)
+            
+            return rounds
+            
+        except Exception as e:
+            self.db.rollback()
+            raise Exception(f"Failed to create rounds for {house.name}: {str(e)}")
+    
     
     def schedule_daily_rounds(self, target_date: date = None) -> dict:
         """Schedule rounds for a specific date (default: tomorrow)"""
@@ -122,8 +133,9 @@ class TeerSchedulerService:
                 
                 results['houses_scheduled'].append({
                     'house': house.name,
-                    'fr_time': house.fr_time.strftime('%H:%M'),
-                    'sr_time': house.sr_time.strftime('%H:%M'),
+                    'fr_time': house.get_display_time(house.fr_time),
+                    'sr_time': house.get_display_time(house.sr_time),
+                    'timezone': house.timezone,
                     'rounds_created': len(created_rounds)
                 })
                 results['total_rounds_created'] += len(created_rounds)

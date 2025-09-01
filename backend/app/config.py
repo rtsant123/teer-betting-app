@@ -24,13 +24,13 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     
     # CORS settings
-    ALLOWED_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1:3000,http://127.0.0.1:80,http://127.0.0.1"
-    BACKEND_CORS_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1:3000,http://127.0.0.1:80,http://127.0.0.1"
+    ALLOWED_ORIGINS: Union[str, List[str]] = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1:3000,http://127.0.0.1:80,http://127.0.0.1")
+    BACKEND_CORS_ORIGINS: Union[str, List[str]] = os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1:3000,http://127.0.0.1:80,http://127.0.0.1")
     
     # Additional production settings
-    DOMAIN: Optional[str] = None
-    VPS_IP: Optional[str] = None
-    FORCE_HTTPS: bool = False
+    DOMAIN: Optional[str] = os.getenv("DOMAIN")
+    VPS_IP: Optional[str] = os.getenv("VPS_IP")
+    FORCE_HTTPS: bool = os.getenv("FORCE_HTTPS", "False").lower() == "true"
     
     @field_validator('ALLOWED_ORIGINS', 'BACKEND_CORS_ORIGINS')
     @classmethod

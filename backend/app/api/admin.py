@@ -16,6 +16,55 @@ from app.services.round_service import RoundService
 from app.services.wallet_service import WalletService
 from app.services.teer_scheduler import TeerSchedulerService
 from app.models import User, House, Round, Transaction, Bet
+from app.models.round import RoundStatus, RoundType
+import pytz
+
+async def reschedule_future_rounds(house_id: int, db: Session):
+    """Reschedule all future scheduled rounds for a house when timings change"""
+    try:
+        house = db.query(House).filter(House.id == house_id).first()
+        if not house:
+            return
+        
+        # Get all future scheduled rounds for this house
+        from datetime import datetime
+        now_utc = datetime.now(pytz.UTC)
+        
+        future_rounds = db.query(Round).filter(
+            and_(
+                Round.house_id == house_id,
+                Round.status == RoundStatus.SCHEDULED,
+                Round.scheduled_time > now_utc
+            )
+        ).all()
+        
+        # Update each round with new timing
+        for round_obj in future_rounds:
+            # Get the date part of the original scheduled time
+            original_datetime = round_obj.scheduled_time
+            round_date = original_datetime.date()
+            
+            # Calculate new time based on round type
+            if round_obj.round_type == RoundType.FR:
+                new_datetime = house.get_local_datetime(round_date, house.fr_time)
+            elif round_obj.round_type == RoundType.SR:
+                new_datetime = house.get_local_datetime(round_date, house.sr_time)
+            else:
+                continue  # Skip other round types
+            
+            # Convert to UTC for storage
+            new_datetime_utc = new_datetime.astimezone(pytz.UTC)
+            new_betting_deadline = house.get_betting_deadline(new_datetime_utc)
+            
+            # Update the round
+            round_obj.scheduled_time = new_datetime_utc
+            round_obj.betting_closes_at = new_betting_deadline
+        
+        db.commit()
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error rescheduling rounds for house {house_id}: {str(e)}")
 from app.models.payment_method import PaymentMethod, PaymentMethodType
 from app.models.banner import Banner
 from app.models.transaction import TransactionType, TransactionStatus
@@ -916,17 +965,34 @@ async def update_house(
     current_admin: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Update a house"""
+    """Update a house - when times are changed, future rounds are automatically rescheduled"""
     house = db.query(House).filter(House.id == house_id).first()
     if not house:
         raise HTTPException(status_code=404, detail="House not found")
     
     try:
         update_data = house_data.model_dump(exclude_unset=True)
+        
+        # Check if timing fields are being updated
+        timing_changed = any(field in update_data for field in 
+                           ['fr_time', 'sr_time', 'betting_window_minutes', 'timezone'])
+        
+        # Apply updates
         for field, value in update_data.items():
-            setattr(house, field, value)
+            if field in ['fr_time', 'sr_time'] and value:
+                # Convert string time to Time object
+                from datetime import datetime
+                time_obj = datetime.strptime(value, "%H:%M:%S").time()
+                setattr(house, field, time_obj)
+            else:
+                setattr(house, field, value)
         
         db.commit()
+        
+        # If timing was changed, reschedule future rounds
+        if timing_changed:
+            await reschedule_future_rounds(house_id, db)
+        
         db.refresh(house)
         
         return HouseResponse(
@@ -935,8 +1001,8 @@ async def update_house(
             location=house.location,
             timezone=house.timezone,
             is_active=house.is_active,
-            fr_time=str(house.fr_time) if house.fr_time else "15:45:00",
-            sr_time=str(house.sr_time) if house.sr_time else "16:45:00",
+            fr_time=str(house.fr_time) if house.fr_time else "15:30:00",
+            sr_time=str(house.sr_time) if house.sr_time else "17:00:00",
             betting_window_minutes=house.betting_window_minutes,
             runs_monday=house.runs_monday,
             runs_tuesday=house.runs_tuesday,
@@ -1738,6 +1804,49 @@ async def get_houses_for_date(
 
 @router.put("/houses/{house_id}/schedule")
 async def update_house_schedule(
+    house_id: int,
+    schedule_data: dict,
+    current_admin: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Update house schedule and automatically reschedule future rounds"""
+    house = db.query(House).filter(House.id == house_id).first()
+    if not house:
+        raise HTTPException(status_code=404, detail="House not found")
+    
+    try:
+        # Update house schedule
+        for field, value in schedule_data.items():
+            if field in ['fr_time', 'sr_time'] and value:
+                from datetime import datetime
+                # Handle both HH:MM and HH:MM:SS formats
+                if len(value.split(':')) == 2:
+                    value = value + ":00"
+                time_obj = datetime.strptime(value, "%H:%M:%S").time()
+                setattr(house, field, time_obj)
+            elif hasattr(house, field):
+                setattr(house, field, value)
+        
+        db.commit()
+        
+        # Reschedule all future rounds
+        await reschedule_future_rounds(house_id, db)
+        
+        return {
+            "success": True,
+            "message": f"House schedule updated and future rounds rescheduled",
+            "house_id": house_id,
+            "new_fr_time": str(house.fr_time),
+            "new_sr_time": str(house.sr_time),
+            "timezone": house.timezone
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error updating house schedule: {str(e)}"
+        )
     house_id: int,
     fr_time: str = Query(..., description="FR time in HH:MM format"),
     sr_time: str = Query(..., description="SR time in HH:MM format"),

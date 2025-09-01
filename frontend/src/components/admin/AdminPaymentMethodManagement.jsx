@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../../services/api';
+import api from '../../services/api';
 
 const AdminPaymentMethodManagement = () => {
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -21,7 +21,7 @@ const AdminPaymentMethodManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const fetchPaymentMethods = async () => {
     try {
-      const response = await apiGet('/admin/payment-methods');
+      const response = await api.get('/admin/payment-methods');
       setPaymentMethods(response.data);
       setError('');
     } catch (err) {
@@ -46,7 +46,7 @@ const AdminPaymentMethodManagement = () => {
       formData.append('file', file);
       
       // Upload payment method image
-      const uploadResponse = await apiPost('/uploads/image', formData, {
+      const uploadResponse = await api.post('/uploads/image', formData, {
         headers: { 
           'Content-Type': 'multipart/form-data'
         }
@@ -121,7 +121,7 @@ const AdminPaymentMethodManagement = () => {
         : '/admin/payment-methods';
       const method = editingId ? 'PUT' : 'POST';
       
-      const response = await apiClient({
+      const response = await api({
         method,
         url,
         data: submitData,
@@ -173,7 +173,7 @@ const AdminPaymentMethodManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this payment method?')) {
       try {
-        await apiDelete(`/admin/payment-methods/${id}`);
+        await api.delete(`/admin/payment-methods/${id}`);
         fetchPaymentMethods();
         setError('');
       } catch (err) {

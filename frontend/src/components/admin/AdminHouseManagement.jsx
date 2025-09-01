@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../../services/api';
+import api from '../../services/api';
 
 const AdminHouseManagement = () => {
   const [houses, setHouses] = useState([]);
@@ -38,7 +38,7 @@ const AdminHouseManagement = () => {
 
   const fetchHouses = async () => {
     try {
-      const response = await apiGet('/admin/houses');
+      const response = await api.get('/admin/houses');
       setHouses(response.data);
     } catch (error) {
       console.error('Error fetching houses:', error);
@@ -51,9 +51,9 @@ const AdminHouseManagement = () => {
     e.preventDefault();
     try {
       if (editingHouse) {
-        await apiPut(`/admin/houses/${editingHouse.id}`, formData);
+        await api.put(`/admin/houses/${editingHouse.id}`, formData);
       } else {
-        await apiPost('/admin/houses', formData);
+        await api.post('/admin/houses', formData);
       }
       await fetchHouses();
       resetForm();
@@ -127,7 +127,7 @@ const AdminHouseManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this house?')) {
       try {
-        await apiDelete(`/admin/houses/${id}`);
+        await api.delete(`/admin/houses/${id}`);
         await fetchHouses();
         alert('House deleted successfully!');
       } catch (error) {

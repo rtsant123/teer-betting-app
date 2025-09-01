@@ -60,10 +60,15 @@ class HouseCreate(BaseModel):
     @validator('fr_time', 'sr_time')
     def validate_time_format(cls, v):
         try:
-            datetime.strptime(v, "%H:%M:%S")
+            # Support both HH:MM and HH:MM:SS formats
+            if len(v.split(':')) == 2:
+                datetime.strptime(v, "%H:%M")
+                v = v + ":00"  # Add seconds
+            else:
+                datetime.strptime(v, "%H:%M:%S")
             return v
         except ValueError:
-            raise ValueError('Time must be in HH:MM:SS format')
+            raise ValueError('Time must be in HH:MM or HH:MM:SS format')
 
 # ==================== ROUND SCHEMAS ====================
 
@@ -238,10 +243,15 @@ class HouseUpdate(BaseModel):
     def validate_time_format(cls, v):
         if v is not None:
             try:
-                datetime.strptime(v, "%H:%M:%S")
+                # Support both HH:MM and HH:MM:SS formats
+                if len(v.split(':')) == 2:
+                    datetime.strptime(v, "%H:%M")
+                    v = v + ":00"  # Add seconds
+                else:
+                    datetime.strptime(v, "%H:%M:%S")
                 return v
             except ValueError:
-                raise ValueError('Time must be in HH:MM:SS format')
+                raise ValueError('Time must be in HH:MM or HH:MM:SS format')
         return v
 
 class HouseResponse(BaseModel):
