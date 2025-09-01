@@ -2,31 +2,32 @@ import axios from 'axios';
 
 /**
  * Centralized API configuration
- * Uses VITE_API_URL environment variable or smart defaults
+ * Fixed for VPS deployment
  */
 const getApiBaseUrl = () => {
-  // Use environment variable if set (production/staging)
-  if (import.meta.env.VITE_API_URL) {
+  // Check if VITE_API_URL is defined (not undefined)
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== 'undefined') {
     console.log('Using configured API URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
   
-  // Production default - use reverse proxy
-  if (import.meta.env.PROD) {
-    return '/api';
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  
+  console.log('Auto-detecting API URL for:', { hostname, protocol });
+  
+  // VPS deployment - use backend port 8000
+  if (hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+    return `${protocol}//${hostname}:8000`;
   }
   
-  // Development fallback
-  const hostname = window.location.hostname;
-  console.log('Auto-detecting API URL for:', { hostname });
+  // Local development
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
   
-  // GitHub Codespaces
-  if (hostname.includes('github.dev') || hostname.includes('codespaces')) {
-    return '/api/v1';
-  } 
-  
-  // Local development - avoid hardcoded localhost
-  return '/api/v1';
+  // Fallback for other domains
+  return `${protocol}//${hostname}:8000`;
 };
 
 // Create axios instance with base configuration
