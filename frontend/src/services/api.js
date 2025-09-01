@@ -2,32 +2,19 @@ import axios from 'axios';
 
 /**
  * Centralized API configuration
- * Fixed for VPS deployment
+ * Simple and reliable for VPS deployment
  */
 const getApiBaseUrl = () => {
-  // Check if VITE_API_URL is defined (not undefined)
-  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== 'undefined') {
-    console.log('Using configured API URL:', import.meta.env.VITE_API_URL);
-    return import.meta.env.VITE_API_URL;
-  }
+  // Always use VPS backend URL for production
+  const vpsUrl = 'http://165.22.61.56:8000';
   
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  
-  console.log('Auto-detecting API URL for:', { hostname, protocol });
-  
-  // VPS deployment - use backend port 8000
-  if (hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-    return `${protocol}//${hostname}:8000`;
-  }
-  
-  // Local development
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  // For local development, check if we're on localhost
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:8000';
   }
   
-  // Fallback for other domains
-  return `${protocol}//${hostname}:8000`;
+  // For VPS deployment
+  return vpsUrl;
 };
 
 // Create axios instance with base configuration
