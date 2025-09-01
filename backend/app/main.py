@@ -241,6 +241,22 @@ try:
 except Exception as e:
     logger.warning(f"Could not import wallet router: {e}")
 
+# Enhanced wallet with withdraw/deposit system
+try:
+    from app.api.wallet_enhanced import router as wallet_enhanced_router
+    app.include_router(wallet_enhanced_router, prefix="/api/v1/wallet", tags=["Enhanced Wallet"])
+    logger.info("Enhanced wallet router included successfully")
+except Exception as e:
+    logger.warning(f"Could not import enhanced wallet router: {e}")
+
+# Admin wallet management
+try:
+    from app.api.admin_wallet import router as admin_wallet_router
+    app.include_router(admin_wallet_router, prefix="/api/v1/admin/wallet", tags=["Admin Wallet"])
+    logger.info("Admin wallet router included successfully")
+except Exception as e:
+    logger.warning(f"Could not import admin wallet router: {e}")
+
 try:
     from app.api.rounds import router as rounds_router
     app.include_router(rounds_router, prefix="/api/v1/rounds", tags=["Rounds"])
