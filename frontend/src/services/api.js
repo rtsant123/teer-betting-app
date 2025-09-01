@@ -1,25 +1,13 @@
 import axios from 'axios';
 
-/**
- * Centralized API configuration
- * Simple and reliable for VPS deployment
- */
-const getApiBaseUrl = () => {
-  // Always use VPS backend URL for production
-  const vpsUrl = 'http://165.22.61.56:8000';
-  
-  // For local development, check if we're on localhost
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:8000';
-  }
-  
-  // For VPS deployment
-  return vpsUrl;
-};
+// Simple API configuration that just works
+const API_BASE_URL = 'http://165.22.61.56:8000';
+
+console.log('API Base URL:', API_BASE_URL);
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: getApiBaseUrl(),
+  baseURL: API_BASE_URL,
   timeout: 10000,
   withCredentials: true,
   headers: {
