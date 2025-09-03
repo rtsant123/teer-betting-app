@@ -57,13 +57,7 @@ const Wallet = () => {
   
   const [withdrawForm, setWithdrawForm] = useState({
     amount: '',
-    payment_method_id: '',
-    account_holder_name: '',
-    account_number: '',
-    ifsc_code: '',
-    upi_id: '',
-    notes: '',
-    transaction_details: {}
+    notes: ''
   });
 
   // Form validation and UI states
@@ -198,28 +192,6 @@ const Wallet = () => {
     if (parseFloat(withdrawForm.amount) > balance) {
       errors.amount = 'Insufficient balance';
     }
-    if (!withdrawForm.payment_method_id) {
-      errors.payment_method_id = 'Please select a payment method';
-    }
-
-    const selectedMethod = withdrawMethods.find(m => m.id === parseInt(withdrawForm.payment_method_id));
-    if (selectedMethod) {
-      if (selectedMethod.type === 'BANK_ACCOUNT') {
-        if (!withdrawForm.account_holder_name.trim()) {
-          errors.account_holder_name = 'Please enter account holder name';
-        }
-        if (!withdrawForm.account_number.trim()) {
-          errors.account_number = 'Please enter account number';
-        }
-        if (!withdrawForm.ifsc_code.trim()) {
-          errors.ifsc_code = 'Please enter IFSC code';
-        }
-      } else if (selectedMethod.type === 'UPI') {
-        if (!withdrawForm.upi_id.trim()) {
-          errors.upi_id = 'Please enter UPI ID';
-        }
-      }
-    }
     
     setWithdrawFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -295,36 +267,20 @@ const Wallet = () => {
 
     setLoading(true);
     try {
-      // Prepare transaction details according to backend schema
-      const transactionDetails = {
-        account_holder_name: withdrawForm.account_holder_name,
-        account_number: withdrawForm.account_number,
-        ifsc_code: withdrawForm.ifsc_code,
-        upi_id: withdrawForm.upi_id,
-        user_notes: withdrawForm.notes || ''
-      };
-
       const withdrawData = {
         amount: parseFloat(withdrawForm.amount),
-        payment_method_id: parseInt(withdrawForm.payment_method_id),
-        transaction_details: transactionDetails
+        notes: withdrawForm.notes || 'Withdrawal request - Admin will process manually'
       };
 
       await walletService.withdraw(withdrawData);
       
-      toast.success('Withdrawal request submitted successfully!');
+      toast.success('Withdrawal request submitted successfully! Admin will review and process your request.');
       setWithdrawForm({ 
         amount: '', 
-        payment_method_id: '',
-        account_holder_name: '',
-        account_number: '',
-        ifsc_code: '',
-        upi_id: '',
-        notes: '',
-        transaction_details: {} 
+        notes: ''
       });
       setWithdrawFormErrors({});
-      setShowWithdrawForm(false);
+      setActiveTab('overview');
       loadTransactions();
       getBalance();
     } catch (error) {
@@ -347,7 +303,7 @@ const Wallet = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50">
       <HeaderBar />
       
       {/* Main Content - Mobile First Design */}
@@ -359,7 +315,7 @@ const Wallet = () => {
               {/* Mobile Layout - Stacked */}
               <div className="block sm:hidden">
                 <div className="flex items-center justify-center mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-r from-slate-600 to-gray-700 rounded-full flex items-center justify-center">
                     <WalletIcon className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -387,7 +343,7 @@ const Wallet = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
                     onClick={() => setActiveTab('deposit')}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30 text-sm py-3"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0 text-sm py-3"
                     size="sm"
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -396,7 +352,7 @@ const Wallet = () => {
                   <Button 
                     onClick={() => setActiveTab('withdraw')}
                     variant="outline"
-                    className="bg-white/10 hover:bg-white/20 text-white border-white/30 text-sm py-3"
+                    className="bg-white/90 hover:bg-white text-gray-700 border-gray-300 text-sm py-3"
                     size="sm"
                   >
                     <Minus className="w-4 h-4 mr-1" />
@@ -408,7 +364,7 @@ const Wallet = () => {
               {/* Desktop Layout - Horizontal */}
               <div className="hidden sm:flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-slate-600 to-gray-700 rounded-full flex items-center justify-center">
                     <WalletIcon className="w-8 h-8 text-white" />
                   </div>
                   <div>
@@ -436,7 +392,7 @@ const Wallet = () => {
                 <div className="flex space-x-3">
                   <Button 
                     onClick={() => setActiveTab('deposit')}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0"
                     size="sm"
                   >
                     <Plus className="w-4 h-4 mr-2" />
@@ -445,7 +401,7 @@ const Wallet = () => {
                   <Button 
                     onClick={() => setActiveTab('withdraw')}
                     variant="outline"
-                    className="bg-white/10 hover:bg-white/20 text-white border-white/30"
+                    className="bg-white hover:bg-gray-50 text-gray-700 border-gray-300"
                     size="sm"
                   >
                     <Minus className="w-4 h-4 mr-2" />
@@ -474,7 +430,7 @@ const Wallet = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex-shrink-0 flex flex-col items-center justify-center px-3 py-3 min-w-[70px] text-xs font-medium transition-colors ${
                       activeTab === tab.id 
-                        ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+                        ? 'text-emerald-600 border-b-2 border-emerald-600 bg-emerald-50' 
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -622,15 +578,15 @@ const Wallet = () => {
           {/* Deposit Tab - Enhanced Mobile-First Design */}
           {activeTab === 'deposit' && (
             <div className="space-y-4">
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50">
-                <CardHeader className="pb-3 sm:pb-4 mobile-card-padding">
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader className="pb-3 sm:pb-4 mobile-card-padding border-b border-gray-100">
                   <div className="flex items-center space-x-2 sm:space-x-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full flex items-center justify-center">
                       <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-blue-800 text-lg sm:text-xl font-bold">Add Money to Wallet</CardTitle>
-                      <CardDescription className="text-green-600 text-sm sm:text-base">Quick and secure deposit process</CardDescription>
+                      <CardTitle className="text-gray-800 text-lg sm:text-xl font-bold">Add Money to Wallet</CardTitle>
+                      <CardDescription className="text-gray-600 text-sm sm:text-base">Quick and secure deposit process</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -654,7 +610,7 @@ const Wallet = () => {
                               setDepositFormErrors({...depositFormErrors, amount: ''});
                             }
                           }}
-                          className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-4 text-lg font-semibold border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all mobile-form-input ${
+                          className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-4 text-lg font-semibold border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all mobile-form-input ${
                             depositFormErrors.amount ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                           }`}
                         />
@@ -680,7 +636,7 @@ const Wallet = () => {
                             setDepositFormErrors({...depositFormErrors, payment_method_id: ''});
                           }
                         }}
-                        className={`w-full px-3 sm:px-4 py-3 sm:py-4 text-base sm:text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all mobile-form-select ${
+                        className={`w-full px-3 sm:px-4 py-3 sm:py-4 text-base sm:text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all mobile-form-select ${
                           depositFormErrors.payment_method_id ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                         }`}
                       >
@@ -796,7 +752,7 @@ const Wallet = () => {
                               setDepositFormErrors({...depositFormErrors, transaction_id: ''});
                             }
                           }}
-                          className={`w-full px-3 sm:px-4 py-3 sm:py-4 text-base sm:text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all mobile-form-input ${
+                          className={`w-full px-3 sm:px-4 py-3 sm:py-4 text-base sm:text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all mobile-form-input ${
                             depositFormErrors.transaction_id ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                           }`}
                         />
@@ -851,7 +807,7 @@ const Wallet = () => {
                           value={depositForm.notes}
                           onChange={(e) => setDepositForm({...depositForm, notes: e.target.value})}
                           rows={3}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all resize-none"
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
                         />
                       </div>
                     )}
@@ -860,7 +816,7 @@ const Wallet = () => {
                     <div className="pt-4">
                       <Button 
                         type="submit"
-                        className="w-full py-4 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                        className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                         disabled={loading || !depositForm.amount || !depositForm.payment_method_id || !depositForm.transaction_id}
                       >
                         {loading ? (
@@ -882,32 +838,33 @@ const Wallet = () => {
             </div>
           )}
 
-          {/* Withdraw Tab - Enhanced with Detailed Forms */}
+          {/* Withdraw Tab - Simplified Professional Form */}
           {activeTab === 'withdraw' && (
             <div className="space-y-4">
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-red-50">
-                <CardHeader className="pb-3 sm:pb-4 mobile-card-padding">
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader className="pb-3 sm:pb-4 mobile-card-padding border-b border-gray-100">
                   <div className="flex items-center space-x-2 sm:space-x-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-600 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full flex items-center justify-center">
                       <Minus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-orange-800 text-lg sm:text-xl font-bold">Withdraw Money</CardTitle>
-                      <CardDescription className="text-orange-700 text-sm sm:text-base">Secure withdrawal to your account</CardDescription>
+                      <CardTitle className="text-gray-800 text-lg sm:text-xl font-bold">Request Withdrawal</CardTitle>
+                      <CardDescription className="text-gray-600 text-sm sm:text-base">Submit withdrawal request for admin approval</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 
                 <CardContent className="space-y-4 sm:space-y-6 mobile-card-padding">
                   {/* Withdrawal Information */}
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 sm:p-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
                     <div className="flex items-start">
-                      <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-yellow-800">
-                        <p className="font-medium mb-2">Withdrawal Information:</p>
+                      <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-2">Important Information:</p>
                         <ul className="space-y-1 text-xs sm:text-sm">
                           <li>• Minimum withdrawal: ₹100</li>
-                          <li>• Processing time: 1-3 business days</li>
+                          <li>• Admin will manually review and approve your request</li>
+                          <li>• Processing time: 1-3 business days after approval</li>
                           <li>• Available balance: ₹{balance?.toLocaleString() || '0'}</li>
                         </ul>
                       </div>
@@ -918,7 +875,7 @@ const Wallet = () => {
                     {/* Amount Input */}
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold text-gray-700">
-                        Amount <span className="text-red-500">*</span>
+                        Withdrawal Amount <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold text-lg">₹</span>
@@ -932,7 +889,7 @@ const Wallet = () => {
                               setWithdrawFormErrors({...withdrawFormErrors, amount: ''});
                             }
                           }}
-                          className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-4 text-lg font-semibold border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all mobile-form-input ${
+                          className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-4 text-lg font-semibold border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all mobile-form-input ${
                             withdrawFormErrors.amount ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
                           }`}
                         />
@@ -944,224 +901,59 @@ const Wallet = () => {
                         </p>
                       )}
                       <p className="text-xs sm:text-sm text-gray-600">
-                        Available: ₹{balance?.toLocaleString() || '0'}
+                        Available Balance: ₹{balance?.toLocaleString() || '0'}
                       </p>
                     </div>
 
-                    {/* Payment Method Selection */}
+                    {/* Additional Notes */}
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold text-gray-700">
-                        Withdrawal Method <span className="text-red-500">*</span>
+                        Notes for Admin (Optional)
                       </label>
-                      <select
-                        value={withdrawForm.payment_method_id}
-                        onChange={(e) => {
-                          setWithdrawForm({...withdrawForm, payment_method_id: e.target.value});
-                          if (withdrawFormErrors.payment_method_id) {
-                            setWithdrawFormErrors({...withdrawFormErrors, payment_method_id: ''});
-                          }
-                        }}
-                        className={`w-full px-3 sm:px-4 py-3 sm:py-4 text-base sm:text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all mobile-form-select ${
-                          withdrawFormErrors.payment_method_id ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                        }`}
-                      >
-                        <option value="">Select withdrawal method</option>
-                        {withdrawMethods.map((method) => (
-                          <option key={method.id} value={method.id}>
-                            {method.type === 'UPI' ? '📱' : method.type === 'BANK_ACCOUNT' ? '🏦' : method.type === 'WALLET' ? '💳' : '💰'} {method.name} ({method.type})
-                          </option>
-                        ))}
-                      </select>
-                      {withdrawFormErrors.payment_method_id && (
-                        <p className="text-red-500 text-sm flex items-center">
-                          <AlertCircle className="w-4 h-4 mr-1" />
-                          {withdrawFormErrors.payment_method_id}
-                        </p>
-                      )}
-                      {withdrawMethods.length === 0 && (
-                        <p className="text-amber-600 text-sm flex items-center">
-                          <AlertCircle className="w-4 h-4 mr-1" />
-                          No withdrawal methods available
-                        </p>
-                      )}
+                      <textarea
+                        placeholder="Add any notes or special instructions for the admin (e.g., preferred payment method, account details, etc.)"
+                        value={withdrawForm.notes}
+                        onChange={(e) => setWithdrawForm({...withdrawForm, notes: e.target.value})}
+                        rows={4}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Provide your bank account details, UPI ID, or preferred payment method here
+                      </p>
                     </div>
-
-                    {/* Dynamic Form Fields Based on Payment Method */}
-                    {withdrawForm.payment_method_id && (() => {
-                      const selectedMethod = withdrawMethods.find(m => m.id === parseInt(withdrawForm.payment_method_id));
-                      if (!selectedMethod) return null;
-
-                      if (selectedMethod.type === 'BANK_ACCOUNT') {
-                        return (
-                          <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                            <h3 className="text-lg font-semibold text-blue-800 flex items-center">
-                              <CreditCard className="w-5 h-5 mr-2" />
-                              Bank Account Details
-                            </h3>
-                            
-                            {/* Account Holder Name */}
-                            <div className="space-y-2">
-                              <label className="block text-sm font-semibold text-gray-700">
-                                Account Holder Name <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Enter account holder name"
-                                value={withdrawForm.account_holder_name}
-                                onChange={(e) => {
-                                  setWithdrawForm({...withdrawForm, account_holder_name: e.target.value});
-                                  if (withdrawFormErrors.account_holder_name) {
-                                    setWithdrawFormErrors({...withdrawFormErrors, account_holder_name: ''});
-                                  }
-                                }}
-                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                                  withdrawFormErrors.account_holder_name ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                                }`}
-                              />
-                              {withdrawFormErrors.account_holder_name && (
-                                <p className="text-red-500 text-sm flex items-center">
-                                  <AlertCircle className="w-4 h-4 mr-1" />
-                                  {withdrawFormErrors.account_holder_name}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Account Number */}
-                            <div className="space-y-2">
-                              <label className="block text-sm font-semibold text-gray-700">
-                                Account Number <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Enter bank account number"
-                                value={withdrawForm.account_number}
-                                onChange={(e) => {
-                                  setWithdrawForm({...withdrawForm, account_number: e.target.value});
-                                  if (withdrawFormErrors.account_number) {
-                                    setWithdrawFormErrors({...withdrawFormErrors, account_number: ''});
-                                  }
-                                }}
-                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                                  withdrawFormErrors.account_number ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                                }`}
-                              />
-                              {withdrawFormErrors.account_number && (
-                                <p className="text-red-500 text-sm flex items-center">
-                                  <AlertCircle className="w-4 h-4 mr-1" />
-                                  {withdrawFormErrors.account_number}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* IFSC Code */}
-                            <div className="space-y-2">
-                              <label className="block text-sm font-semibold text-gray-700">
-                                IFSC Code <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Enter IFSC code (e.g., SBIN0001234)"
-                                value={withdrawForm.ifsc_code}
-                                onChange={(e) => {
-                                  setWithdrawForm({...withdrawForm, ifsc_code: e.target.value.toUpperCase()});
-                                  if (withdrawFormErrors.ifsc_code) {
-                                    setWithdrawFormErrors({...withdrawFormErrors, ifsc_code: ''});
-                                  }
-                                }}
-                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                                  withdrawFormErrors.ifsc_code ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                                }`}
-                              />
-                              {withdrawFormErrors.ifsc_code && (
-                                <p className="text-red-500 text-sm flex items-center">
-                                  <AlertCircle className="w-4 h-4 mr-1" />
-                                  {withdrawFormErrors.ifsc_code}
-                                </p>
-                              )}
-                              <p className="text-xs text-gray-600">
-                                Find your IFSC code on your bank's website or passbook
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      } else if (selectedMethod.type === 'UPI') {
-                        return (
-                          <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                            <h3 className="text-lg font-semibold text-purple-800 flex items-center">
-                              <Smartphone className="w-5 h-5 mr-2" />
-                              UPI Details
-                            </h3>
-                            
-                            {/* UPI ID */}
-                            <div className="space-y-2">
-                              <label className="block text-sm font-semibold text-gray-700">
-                                UPI ID <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Enter UPI ID (e.g., yourname@paytm)"
-                                value={withdrawForm.upi_id}
-                                onChange={(e) => {
-                                  setWithdrawForm({...withdrawForm, upi_id: e.target.value});
-                                  if (withdrawFormErrors.upi_id) {
-                                    setWithdrawFormErrors({...withdrawFormErrors, upi_id: ''});
-                                  }
-                                }}
-                                className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all ${
-                                  withdrawFormErrors.upi_id ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                                }`}
-                              />
-                              {withdrawFormErrors.upi_id && (
-                                <p className="text-red-500 text-sm flex items-center">
-                                  <AlertCircle className="w-4 h-4 mr-1" />
-                                  {withdrawFormErrors.upi_id}
-                                </p>
-                              )}
-                              <p className="text-xs text-gray-600">
-                                Examples: name@paytm, name@ybl, name@okhdfcbank
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-
-                    {/* Additional Notes */}
-                    {withdrawForm.payment_method_id && (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">
-                          Additional Notes (Optional)
-                        </label>
-                        <textarea
-                          placeholder="Any special instructions or notes..."
-                          value={withdrawForm.notes}
-                          onChange={(e) => setWithdrawForm({...withdrawForm, notes: e.target.value})}
-                          rows={3}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all resize-none"
-                        />
-                      </div>
-                    )}
 
                     {/* Submit Button */}
                     <div className="pt-4">
                       <Button 
                         type="submit"
-                        className="w-full py-4 text-lg font-semibold bg-orange-600 hover:bg-orange-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                        disabled={loading || !withdrawForm.amount || !withdrawForm.payment_method_id || parseFloat(withdrawForm.amount) > balance}
+                        className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                        disabled={loading || !withdrawForm.amount || parseFloat(withdrawForm.amount) > balance || parseFloat(withdrawForm.amount) < 100}
                       >
                         {loading ? (
                           <div className="flex items-center justify-center space-x-2">
                             <RefreshCw className="w-5 h-5 animate-spin" />
-                            <span>Processing...</span>
+                            <span>Submitting Request...</span>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center space-x-2">
-                            <Minus className="w-5 h-5" />
-                            <span>Withdraw ₹{withdrawForm.amount || '0'}</span>
+                            <FileText className="w-5 h-5" />
+                            <span>Submit Withdrawal Request</span>
                           </div>
                         )}
                       </Button>
+                    </div>
+
+                    {/* Information Note */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4">
+                      <div className="flex items-start">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-amber-800">
+                          <p className="font-medium mb-1">Manual Processing:</p>
+                          <p className="text-xs sm:text-sm">
+                            Your withdrawal request will be reviewed by our admin team. Please ensure you provide accurate payment details in the notes section above.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </form>
                 </CardContent>

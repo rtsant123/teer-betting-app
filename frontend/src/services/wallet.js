@@ -31,6 +31,10 @@ export const walletService = {
   // Get wallet info
   getWalletInfo: () => {
     return api.get('/wallet/');
+  },
+  // Get payment methods
+  getPaymentMethods: () => {
+    return api.get('/wallet/payment-methods/deposit');
   }
 };
 export default walletService;
