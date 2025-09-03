@@ -1847,6 +1847,9 @@ async def update_house_schedule(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Error updating house schedule: {str(e)}"
         )
+
+@router.put("/houses/{house_id}/schedule")
+async def update_house_schedule(
     house_id: int,
     fr_time: str = Query(..., description="FR time in HH:MM format"),
     sr_time: str = Query(..., description="SR time in HH:MM format"),
