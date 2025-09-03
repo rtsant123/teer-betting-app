@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Simple API configuration that just works
-const API_BASE_URL = 'http://165.22.61.56:8000';
+const API_BASE_URL = 'http://165.22.61.56:8001/api/v1';
 
 console.log('API Base URL:', API_BASE_URL);
 
