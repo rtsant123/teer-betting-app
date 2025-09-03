@@ -192,6 +192,9 @@ const Wallet = () => {
     if (parseFloat(withdrawForm.amount) > balance) {
       errors.amount = 'Insufficient balance';
     }
+    if (!withdrawForm.notes || withdrawForm.notes.trim().length < 10) {
+      errors.notes = 'Please provide your payment details (minimum 10 characters)';
+    }
     
     setWithdrawFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -267,9 +270,23 @@ const Wallet = () => {
 
     setLoading(true);
     try {
+      // Get the first available withdrawal payment method
+      let paymentMethodId = 1; // Default fallback
+      
+      if (withdrawMethods.length > 0) {
+        paymentMethodId = withdrawMethods[0].id;
+      }
+      
+      // Structure the request to match backend expectations
       const withdrawData = {
         amount: parseFloat(withdrawForm.amount),
-        notes: withdrawForm.notes || 'Withdrawal request - Admin will process manually'
+        payment_method_id: paymentMethodId,
+        transaction_details: {
+          manual_processing: true,
+          user_notes: withdrawForm.notes,
+          request_type: 'simplified_withdrawal',
+          payment_instructions: withdrawForm.notes
+        }
       };
 
       await walletService.withdraw(withdrawData);
@@ -284,7 +301,22 @@ const Wallet = () => {
       loadTransactions();
       getBalance();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to submit withdrawal request');
+      console.error('Withdrawal error:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 422) {
+        const detail = error.response?.data?.detail;
+        if (Array.isArray(detail)) {
+          const errorMessages = detail.map(err => err.msg).join(', ');
+          toast.error(`Validation error: ${errorMessages}`);
+        } else {
+          toast.error(detail || 'Invalid request format');
+        }
+      } else if (error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error('Failed to submit withdrawal request. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -905,21 +937,37 @@ const Wallet = () => {
                       </p>
                     </div>
 
-                    {/* Additional Notes */}
+                    {/* Additional Notes - Enhanced */}
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold text-gray-700">
-                        Notes for Admin (Optional)
+                        Payment Details & Instructions <span className="text-emerald-600">*</span>
                       </label>
                       <textarea
-                        placeholder="Add any notes or special instructions for the admin (e.g., preferred payment method, account details, etc.)"
+                        placeholder="Please provide your payment details here:&#10;&#10;For Bank Transfer:&#10;• Account Holder Name&#10;• Account Number&#10;• IFSC Code&#10;• Bank Name&#10;&#10;For UPI:&#10;• UPI ID (e.g., yourname@paytm)&#10;&#10;For Other Methods:&#10;• Preferred payment method&#10;• Required details"
                         value={withdrawForm.notes}
-                        onChange={(e) => setWithdrawForm({...withdrawForm, notes: e.target.value})}
-                        rows={4}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
+                        onChange={(e) => {
+                          setWithdrawForm({...withdrawForm, notes: e.target.value});
+                          if (withdrawFormErrors.notes) {
+                            setWithdrawFormErrors({...withdrawFormErrors, notes: ''});
+                          }
+                        }}
+                        rows={8}
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none text-sm ${
+                          withdrawFormErrors.notes ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                        }`}
+                        required
                       />
-                      <p className="text-xs text-gray-500">
-                        Provide your bank account details, UPI ID, or preferred payment method here
-                      </p>
+                      {withdrawFormErrors.notes && (
+                        <p className="text-red-500 text-sm flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {withdrawFormErrors.notes}
+                        </p>
+                      )}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                        <p className="text-xs text-blue-800 font-medium">
+                          💡 <strong>Important:</strong> Please provide complete and accurate payment details above. Admin will use this information to process your withdrawal.
+                        </p>
+                      </div>
                     </div>
 
                     {/* Submit Button */}
@@ -927,7 +975,7 @@ const Wallet = () => {
                       <Button 
                         type="submit"
                         className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-                        disabled={loading || !withdrawForm.amount || parseFloat(withdrawForm.amount) > balance || parseFloat(withdrawForm.amount) < 100}
+                        disabled={loading || !withdrawForm.amount || !withdrawForm.notes || parseFloat(withdrawForm.amount) > balance || parseFloat(withdrawForm.amount) < 100 || withdrawForm.notes.trim().length < 10}
                       >
                         {loading ? (
                           <div className="flex items-center justify-center space-x-2">
