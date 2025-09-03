@@ -622,14 +622,14 @@ const Wallet = () => {
           {/* Deposit Tab - Enhanced Mobile-First Design */}
           {activeTab === 'deposit' && (
             <div className="space-y-4">
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-50">
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50">
                 <CardHeader className="pb-3 sm:pb-4 mobile-card-padding">
                   <div className="flex items-center space-x-2 sm:space-x-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 rounded-full flex items-center justify-center">
                       <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-green-700 text-lg sm:text-xl font-bold">Add Money to Wallet</CardTitle>
+                      <CardTitle className="text-blue-800 text-lg sm:text-xl font-bold">Add Money to Wallet</CardTitle>
                       <CardDescription className="text-green-600 text-sm sm:text-base">Quick and secure deposit process</CardDescription>
                     </div>
                   </div>
@@ -840,25 +840,6 @@ const Wallet = () => {
                       </div>
                     )}
 
-                    {/* Submit Button - Mobile Optimized */}
-                    <Button 
-                      type="submit" 
-                      disabled={loading || !depositForm.payment_method_id}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 sm:py-4 text-base sm:text-lg rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl mobile-form-button"
-                    >
-                      {loading ? (
-                        <div className="flex items-center justify-center">
-                          <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                          Processing...
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center">
-                          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                          Add Money to Wallet
-                        </div>
-                      )}
-                    </Button>
-
                     {/* Notes Input */}
                     {depositForm.payment_method_id && (
                       <div className="space-y-2">
@@ -879,7 +860,7 @@ const Wallet = () => {
                     <div className="pt-4">
                       <Button 
                         type="submit"
-                        className="w-full py-4 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                        className="w-full py-4 text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
                         disabled={loading || !depositForm.amount || !depositForm.payment_method_id || !depositForm.transaction_id}
                       >
                         {loading ? (
@@ -904,15 +885,15 @@ const Wallet = () => {
           {/* Withdraw Tab - Enhanced with Detailed Forms */}
           {activeTab === 'withdraw' && (
             <div className="space-y-4">
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-pink-50">
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-red-50">
                 <CardHeader className="pb-3 sm:pb-4 mobile-card-padding">
                   <div className="flex items-center space-x-2 sm:space-x-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-600 rounded-full flex items-center justify-center">
                       <Minus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-red-700 text-lg sm:text-xl font-bold">Withdraw Money</CardTitle>
-                      <CardDescription className="text-red-600 text-sm sm:text-base">Secure withdrawal to your account</CardDescription>
+                      <CardTitle className="text-orange-800 text-lg sm:text-xl font-bold">Withdraw Money</CardTitle>
+                      <CardDescription className="text-orange-700 text-sm sm:text-base">Secure withdrawal to your account</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -1166,7 +1147,7 @@ const Wallet = () => {
                     <div className="pt-4">
                       <Button 
                         type="submit"
-                        className="w-full py-4 text-lg font-bold bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                        className="w-full py-4 text-lg font-semibold bg-orange-600 hover:bg-orange-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
                         disabled={loading || !withdrawForm.amount || !withdrawForm.payment_method_id || parseFloat(withdrawForm.amount) > balance}
                       >
                         {loading ? (
