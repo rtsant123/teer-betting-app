@@ -43,9 +43,15 @@ else
     exit 1
 fi
 
-print_status "Checking and setting up payment methods..."
-# Ensure there's at least one payment method for withdrawals
-docker-compose exec -T backend python create_manual_payment_method.py
+print_status "Setting up payment methods for withdrawals..."
+# Ensure payment methods are properly configured
+docker-compose exec -T backend python setup_payment_methods.py
+
+if [ $? -eq 0 ]; then
+    print_success "Payment methods configured successfully"
+else
+    print_error "Failed to configure payment methods"
+fi
 
 print_status "Stopping frontend container..."
 docker-compose stop frontend
