@@ -109,20 +109,43 @@ const Wallet = () => {
 
   const loadPaymentMethods = async () => {
     try {
-      // Add timestamp to bypass cache
       const timestamp = Date.now();
+      console.log('Loading payment methods...');
+      
+      // Load both deposit and withdrawal methods
       const [depositResponse, withdrawResponse] = await Promise.all([
-        paymentService.getDepositMethods(`?_t=${timestamp}`),
-        paymentService.getWithdrawalMethods(`?_t=${timestamp}`)
+        paymentService.getDepositMethods(`?_t=${timestamp}`).catch(err => {
+          console.warn('Deposit methods failed:', err);
+          return { data: [] };
+        }),
+        paymentService.getWithdrawalMethods(`?_t=${timestamp}`).catch(err => {
+          console.warn('Withdrawal methods failed:', err);
+          return { data: [] };
+        })
       ]);
       
       const depositMethods = depositResponse.data || [];
       const withdrawMethods = withdrawResponse.data || [];
       
+      console.log('Loaded payment methods:', { 
+        deposits: depositMethods.length, 
+        withdrawals: withdrawMethods.length 
+      });
+      
       setDepositMethods(depositMethods);
       setWithdrawMethods(withdrawMethods);
+      
+      // Show informative messages
+      if (withdrawMethods.length === 0) {
+        console.warn('No withdrawal payment methods found');
+      }
+      if (depositMethods.length === 0) {
+        console.warn('No deposit payment methods found');
+      }
+      
     } catch (error) {
       console.error('Failed to load payment methods:', error);
+      toast.error('Could not load payment methods. Some features may not work properly.');
     }
   };
 
@@ -303,79 +326,96 @@ const Wallet = () => {
 
     setLoading(true);
     try {
-      // Get the first available withdrawal payment method
-      let paymentMethodId = 1; // Default fallback
-      
-      if (withdrawMethods.length > 0) {
-        paymentMethodId = withdrawMethods[0].id;
+      // Check if we have withdrawal methods available
+      if (withdrawMethods.length === 0) {
+        toast.error('No withdrawal methods available. Please contact admin to set up payment methods.');
+        setLoading(false);
+        return;
       }
 
-      // Prepare payment details based on selected method
-      let paymentDetails = {};
+      // Use the first available withdrawal payment method
+      const paymentMethodId = withdrawMethods[0].id;
+
+      // Prepare transaction details based on selected method
+      let transactionDetails = {};
+      
       if (withdrawForm.paymentMethod === 'bank') {
-        paymentDetails = {
-          account_holder_name: withdrawForm.accountHolderName,
-          account_number: withdrawForm.accountNumber,
-          ifsc_code: withdrawForm.ifscCode,
-          bank_name: withdrawForm.bankName,
-          payment_type: 'bank_transfer'
+        transactionDetails = {
+          account_holder_name: withdrawForm.accountHolderName.trim(),
+          account_number: withdrawForm.accountNumber.trim(),
+          ifsc_code: withdrawForm.ifscCode.trim(),
+          bank_name: withdrawForm.bankName.trim()
         };
       } else if (withdrawForm.paymentMethod === 'upi') {
-        paymentDetails = {
-          upi_id: withdrawForm.upiId,
-          payment_type: 'upi'
+        transactionDetails = {
+          upi_id: withdrawForm.upiId.trim()
         };
       } else {
-        paymentDetails = {
-          payment_instructions: withdrawForm.notes,
-          payment_type: 'other'
+        transactionDetails = {
+          payment_instructions: withdrawForm.notes.trim()
         };
       }
       
-      // Structure the request to match backend expectations
-      const withdrawData = {
+      // Create withdrawal request matching backend schema exactly
+      const withdrawalRequest = {
         amount: parseFloat(withdrawForm.amount),
         payment_method_id: paymentMethodId,
-        transaction_details: {
-          ...paymentDetails,
-          manual_processing: true,
-          request_type: 'form_withdrawal'
-        }
+        transaction_details: transactionDetails
       };
 
-      await walletService.withdraw(withdrawData);
+      console.log('Withdrawal request:', withdrawalRequest);
       
-      toast.success('Withdrawal request submitted successfully! Admin will review and process your request.');
-      setWithdrawForm({ 
-        amount: '',
-        paymentMethod: 'bank',
-        accountHolderName: '',
-        accountNumber: '',
-        ifscCode: '',
-        bankName: '',
-        upiId: '',
-        notes: ''
-      });
-      setWithdrawFormErrors({});
-      setActiveTab('overview');
-      loadTransactions();
-      getBalance();
+      const response = await walletService.withdraw(withdrawalRequest);
+      
+      if (response.data) {
+        toast.success('Withdrawal request submitted successfully! Admin will review and process your request.');
+        
+        // Reset form
+        setWithdrawForm({ 
+          amount: '',
+          paymentMethod: 'bank',
+          accountHolderName: '',
+          accountNumber: '',
+          ifscCode: '',
+          bankName: '',
+          upiId: '',
+          notes: ''
+        });
+        setWithdrawFormErrors({});
+        setActiveTab('overview');
+        
+        // Refresh data
+        await loadTransactions();
+        await getBalance();
+      }
     } catch (error) {
-      console.error('Withdrawal error:', error);
+      console.error('Withdrawal error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
       
-      // Handle specific error cases
+      // Handle different error types
       if (error.response?.status === 422) {
+        // Validation errors
         const detail = error.response?.data?.detail;
         if (Array.isArray(detail)) {
-          const errorMessages = detail.map(err => err.msg).join(', ');
-          toast.error(`Validation error: ${errorMessages}`);
+          const errorMsg = detail.map(err => `${err.loc?.slice(-1)[0] || 'field'}: ${err.msg}`).join('; ');
+          toast.error(`Validation error: ${errorMsg}`);
         } else {
-          toast.error(detail || 'Invalid request format');
+          toast.error(detail || 'Please check your input data');
         }
-      } else if (error.response?.data?.detail) {
-        toast.error(error.response.data.detail);
+      } else if (error.response?.status === 400) {
+        // Bad request
+        const errorMsg = error.response?.data?.detail || 'Invalid request. Please check all fields.';
+        toast.error(errorMsg);
+      } else if (error.response?.status === 404) {
+        toast.error('Withdrawal service not found. Please contact admin.');
+      } else if (error.response?.status === 401) {
+        toast.error('Please login again to make withdrawal request.');
       } else {
-        toast.error('Failed to submit withdrawal request. Please try again.');
+        // Generic error
+        toast.error('Unable to submit withdrawal request. Please try again or contact support.');
       }
     } finally {
       setLoading(false);
@@ -947,21 +987,41 @@ const Wallet = () => {
                 </CardHeader>
                 
                 <CardContent className="space-y-4 sm:space-y-6 mobile-card-padding">
-                  {/* Withdrawal Information */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
-                    <div className="flex items-start">
-                      <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-2">Important Information:</p>
-                        <ul className="space-y-1 text-xs sm:text-sm">
-                          <li>• Minimum withdrawal: ₹100</li>
-                          <li>• Admin will manually review and approve your request</li>
-                          <li>• Processing time: 1-3 business days after approval</li>
-                          <li>• Available balance: ₹{balance?.toLocaleString() || '0'}</li>
-                        </ul>
-                      </div>
+                  {/* Check if withdrawal methods are available */}
+                  {withdrawMethods.length === 0 ? (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                      <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+                      <h3 className="text-lg font-semibold text-red-800 mb-2">Withdrawal Not Available</h3>
+                      <p className="text-red-700 mb-3">
+                        No withdrawal payment methods are currently configured. 
+                        Please contact the administrator to set up withdrawal options.
+                      </p>
+                      <Button 
+                        onClick={() => setActiveTab('overview')}
+                        variant="outline"
+                        className="bg-white hover:bg-red-50 text-red-700 border-red-300"
+                      >
+                        Back to Overview
+                      </Button>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Withdrawal Information with Debug Info */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
+                        <div className="flex items-start">
+                          <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                          <div className="text-sm text-blue-800">
+                            <p className="font-medium mb-2">Important Information:</p>
+                            <ul className="space-y-1 text-xs sm:text-sm">
+                              <li>• Minimum withdrawal: ₹100</li>
+                              <li>• Admin will manually review and approve your request</li>
+                              <li>• Processing time: 1-3 business days after approval</li>
+                              <li>• Available balance: ₹{balance?.toLocaleString() || '0'}</li>
+                              <li>• {withdrawMethods.length} withdrawal method(s) available</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
 
                   <form onSubmit={handleWithdraw} className="space-y-4 sm:space-y-6">
                     {/* Amount Input */}
@@ -1237,6 +1297,8 @@ const Wallet = () => {
                       </div>
                     </div>
                   </form>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
