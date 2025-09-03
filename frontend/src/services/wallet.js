@@ -2,7 +2,7 @@ import api from './api';
 export const walletService = {
   // Get wallet balance
   getBalance: () => {
-    return api.get('/wallet/balance');
+    return api.get('/wallet');
   },
   // Create deposit request with payment method
   deposit: (depositData) => {
@@ -33,4 +33,4 @@ export const walletService = {
     return api.get('/wallet/');
   }
 };
-export default walletService;
+export default walletService;

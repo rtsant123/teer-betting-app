@@ -257,17 +257,14 @@ const Wallet = () => {
         payment_proof: depositForm.screenshot ? 'uploaded' : null
       };
 
-      // Create form data for file upload
-      const formData = new FormData();
-      formData.append('amount', parseFloat(depositForm.amount));
-      formData.append('payment_method_id', parseInt(depositForm.payment_method_id));
-      formData.append('transaction_details', JSON.stringify(transactionDetails));
-      
-      if (depositForm.screenshot) {
-        formData.append('screenshot', depositForm.screenshot);
-      }
+      // Send as JSON according to backend DepositRequest schema
+      const depositData = {
+        amount: parseFloat(depositForm.amount),
+        payment_method_id: parseInt(depositForm.payment_method_id),
+        transaction_details: transactionDetails
+      };
 
-      await walletService.deposit(formData);
+      await walletService.deposit(depositData);
       
       toast.success('Deposit request submitted successfully!');
       setDepositForm({ 
