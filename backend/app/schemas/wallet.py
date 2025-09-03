@@ -1,5 +1,5 @@
 from pydantic import BaseModel, validator
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.models.transaction import TransactionType, TransactionStatus
 
@@ -54,8 +54,10 @@ class TransactionResponse(BaseModel):
     status: TransactionStatus
     description: Optional[str] = None
     payment_proof_url: Optional[str] = None
+    payment_method_id: Optional[int] = None
+    transaction_details: Optional[Dict[str, Any]] = None
     
-    # Deposit specific details
+    # Deposit specific details (legacy)
     deposit_method: Optional[str] = None
     reference_number: Optional[str] = None
     deposit_bank: Optional[str] = None
@@ -79,8 +81,10 @@ class DetailedTransactionResponse(BaseModel):
     status: TransactionStatus
     description: Optional[str] = None
     payment_proof_url: Optional[str] = None
+    payment_method_id: Optional[int] = None
+    transaction_details: Optional[Dict[str, Any]] = None
     
-    # Deposit specific details
+    # Deposit specific details (legacy)
     deposit_method: Optional[str] = None
     reference_number: Optional[str] = None
     deposit_bank: Optional[str] = None

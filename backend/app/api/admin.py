@@ -1266,6 +1266,8 @@ async def get_all_transactions(
         status=trans.status,
         description=trans.description,
         payment_proof_url=trans.payment_proof_url,
+        payment_method_id=trans.payment_method_id,
+        transaction_details=trans.transaction_details,
         deposit_method=trans.deposit_method,
         reference_number=trans.reference_number,
         deposit_bank=trans.deposit_bank,
@@ -1273,8 +1275,8 @@ async def get_all_transactions(
         admin_notes=trans.admin_notes,
         processed_by=trans.processed_by,
         processed_at=trans.processed_at,
-        balance_before=0.0,  # Legacy field - not tracked in current model
-        balance_after=0.0,   # Legacy field - not tracked in current model
+        balance_before=trans.balance_before,
+        balance_after=trans.balance_after,
         created_at=trans.created_at
     ) for trans in transactions]
 
@@ -1333,6 +1335,8 @@ async def get_detailed_transactions(
             "status": transaction.status,
             "description": transaction.description,
             "payment_proof_url": transaction.payment_proof_url,
+            "payment_method_id": transaction.payment_method_id,
+            "transaction_details": transaction.transaction_details,
             "deposit_method": transaction.deposit_method,
             "reference_number": transaction.reference_number,
             "deposit_bank": transaction.deposit_bank,
@@ -1340,8 +1344,8 @@ async def get_detailed_transactions(
             "admin_notes": transaction.admin_notes,
             "processed_by": transaction.processed_by,
             "processed_at": transaction.processed_at,
-            "balance_before": 0.0,  # Legacy field - not tracked in current model
-            "balance_after": 0.0,   # Legacy field - not tracked in current model
+            "balance_before": transaction.balance_before,
+            "balance_after": transaction.balance_after,
             "created_at": transaction.created_at
         }
         detailed_transactions.append(detailed_transaction)

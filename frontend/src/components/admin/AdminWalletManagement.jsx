@@ -228,7 +228,7 @@ const AdminWalletManagement = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Details</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -259,8 +259,27 @@ const AdminWalletManagement = () => {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="text-gray-900">{formatDate(transaction.created_at)}</div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-gray-900">{transaction.reference_id || transaction.reference_number || 'N/A'}</div>
+                    <td className="px-4 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs">
+                        {transaction.transaction_details ? (
+                          <div>
+                            {transaction.transaction_details.upi_id && (
+                              <div><strong>UPI:</strong> {transaction.transaction_details.upi_id}</div>
+                            )}
+                            {transaction.transaction_details.account_number && (
+                              <div><strong>A/C:</strong> {transaction.transaction_details.account_number}</div>
+                            )}
+                            {transaction.transaction_details.reference_id && (
+                              <div><strong>Ref:</strong> {transaction.transaction_details.reference_id}</div>
+                            )}
+                            {transaction.transaction_details.user_notes && (
+                              <div className="text-xs text-gray-600"><strong>Notes:</strong> {transaction.transaction_details.user_notes.substring(0, 50)}{transaction.transaction_details.user_notes.length > 50 ? '...' : ''}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-gray-500">{transaction.reference_id || transaction.reference_number || 'N/A'}</div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                       {(transaction.status === 'PENDING' || transaction.status === 'pending') ? (
@@ -268,6 +287,38 @@ const AdminWalletManagement = () => {
                           {/* Transaction Details */}
                           <div className="text-xs text-gray-600 mb-2">
                             <div><strong>Description:</strong> {transaction.description || 'N/A'}</div>
+                            
+                            {/* User Filled Transaction Details */}
+                            {transaction.transaction_details && (
+                              <div className="mt-2 p-2 bg-gray-50 rounded">
+                                <div className="font-semibold text-gray-700 mb-1">User Details:</div>
+                                {transaction.transaction_details.upi_id && (
+                                  <div><strong>UPI ID:</strong> {transaction.transaction_details.upi_id}</div>
+                                )}
+                                {transaction.transaction_details.account_number && (
+                                  <div><strong>Account Number:</strong> {transaction.transaction_details.account_number}</div>
+                                )}
+                                {transaction.transaction_details.account_holder_name && (
+                                  <div><strong>Account Holder:</strong> {transaction.transaction_details.account_holder_name}</div>
+                                )}
+                                {transaction.transaction_details.ifsc_code && (
+                                  <div><strong>IFSC Code:</strong> {transaction.transaction_details.ifsc_code}</div>
+                                )}
+                                {transaction.transaction_details.bank_name && (
+                                  <div><strong>Bank:</strong> {transaction.transaction_details.bank_name}</div>
+                                )}
+                                {transaction.transaction_details.reference_id && (
+                                  <div><strong>Reference ID:</strong> {transaction.transaction_details.reference_id}</div>
+                                )}
+                                {transaction.transaction_details.user_notes && (
+                                  <div><strong>User Notes:</strong> {transaction.transaction_details.user_notes}</div>
+                                )}
+                                {transaction.transaction_details.screenshot_url && (
+                                  <div><strong>Screenshot:</strong> <a href={transaction.transaction_details.screenshot_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a></div>
+                                )}
+                              </div>
+                            )}
+                            
                             {transaction.payment_proof_url && (
                               <div><strong>Proof:</strong> <a href={transaction.payment_proof_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a></div>
                             )}
@@ -275,7 +326,7 @@ const AdminWalletManagement = () => {
                               <div><strong>Method:</strong> {transaction.deposit_method}</div>
                             )}
                             {transaction.admin_notes && (
-                              <div><strong>Notes:</strong> {transaction.admin_notes}</div>
+                              <div><strong>Admin Notes:</strong> {transaction.admin_notes}</div>
                             )}
                           </div>
                           {/* Action Buttons */}
