@@ -57,6 +57,15 @@ const Wallet = () => {
   
   const [withdrawForm, setWithdrawForm] = useState({
     amount: '',
+    paymentMethod: 'bank', // 'bank', 'upi', 'other'
+    // Bank details
+    accountHolderName: '',
+    accountNumber: '',
+    ifscCode: '',
+    bankName: '',
+    // UPI details
+    upiId: '',
+    // Other
     notes: ''
   });
 
@@ -192,8 +201,32 @@ const Wallet = () => {
     if (parseFloat(withdrawForm.amount) > balance) {
       errors.amount = 'Insufficient balance';
     }
-    if (!withdrawForm.notes || withdrawForm.notes.trim().length < 10) {
-      errors.notes = 'Please provide your payment details (minimum 10 characters)';
+
+    // Validate based on payment method
+    if (withdrawForm.paymentMethod === 'bank') {
+      if (!withdrawForm.accountHolderName.trim()) {
+        errors.accountHolderName = 'Account holder name is required';
+      }
+      if (!withdrawForm.accountNumber.trim()) {
+        errors.accountNumber = 'Account number is required';
+      }
+      if (!withdrawForm.ifscCode.trim()) {
+        errors.ifscCode = 'IFSC code is required';
+      }
+      if (!withdrawForm.bankName.trim()) {
+        errors.bankName = 'Bank name is required';
+      }
+    } else if (withdrawForm.paymentMethod === 'upi') {
+      if (!withdrawForm.upiId.trim()) {
+        errors.upiId = 'UPI ID is required';
+      }
+      if (withdrawForm.upiId && !withdrawForm.upiId.includes('@')) {
+        errors.upiId = 'Please enter a valid UPI ID (e.g., name@paytm)';
+      }
+    } else if (withdrawForm.paymentMethod === 'other') {
+      if (!withdrawForm.notes.trim() || withdrawForm.notes.trim().length < 10) {
+        errors.notes = 'Please provide payment details (minimum 10 characters)';
+      }
     }
     
     setWithdrawFormErrors(errors);
@@ -276,16 +309,37 @@ const Wallet = () => {
       if (withdrawMethods.length > 0) {
         paymentMethodId = withdrawMethods[0].id;
       }
+
+      // Prepare payment details based on selected method
+      let paymentDetails = {};
+      if (withdrawForm.paymentMethod === 'bank') {
+        paymentDetails = {
+          account_holder_name: withdrawForm.accountHolderName,
+          account_number: withdrawForm.accountNumber,
+          ifsc_code: withdrawForm.ifscCode,
+          bank_name: withdrawForm.bankName,
+          payment_type: 'bank_transfer'
+        };
+      } else if (withdrawForm.paymentMethod === 'upi') {
+        paymentDetails = {
+          upi_id: withdrawForm.upiId,
+          payment_type: 'upi'
+        };
+      } else {
+        paymentDetails = {
+          payment_instructions: withdrawForm.notes,
+          payment_type: 'other'
+        };
+      }
       
       // Structure the request to match backend expectations
       const withdrawData = {
         amount: parseFloat(withdrawForm.amount),
         payment_method_id: paymentMethodId,
         transaction_details: {
+          ...paymentDetails,
           manual_processing: true,
-          user_notes: withdrawForm.notes,
-          request_type: 'simplified_withdrawal',
-          payment_instructions: withdrawForm.notes
+          request_type: 'form_withdrawal'
         }
       };
 
@@ -293,7 +347,13 @@ const Wallet = () => {
       
       toast.success('Withdrawal request submitted successfully! Admin will review and process your request.');
       setWithdrawForm({ 
-        amount: '', 
+        amount: '',
+        paymentMethod: 'bank',
+        accountHolderName: '',
+        accountNumber: '',
+        ifscCode: '',
+        bankName: '',
+        upiId: '',
         notes: ''
       });
       setWithdrawFormErrors({});
@@ -937,45 +997,218 @@ const Wallet = () => {
                       </p>
                     </div>
 
-                    {/* Additional Notes - Enhanced */}
+                    {/* Payment Method Selection */}
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold text-gray-700">
-                        Payment Details & Instructions <span className="text-emerald-600">*</span>
+                        Payment Method <span className="text-red-500">*</span>
                       </label>
-                      <textarea
-                        placeholder="Please provide your payment details here:&#10;&#10;For Bank Transfer:&#10;• Account Holder Name&#10;• Account Number&#10;• IFSC Code&#10;• Bank Name&#10;&#10;For UPI:&#10;• UPI ID (e.g., yourname@paytm)&#10;&#10;For Other Methods:&#10;• Preferred payment method&#10;• Required details"
-                        value={withdrawForm.notes}
+                      <select
+                        value={withdrawForm.paymentMethod}
                         onChange={(e) => {
-                          setWithdrawForm({...withdrawForm, notes: e.target.value});
-                          if (withdrawFormErrors.notes) {
-                            setWithdrawFormErrors({...withdrawFormErrors, notes: ''});
-                          }
+                          setWithdrawForm({...withdrawForm, paymentMethod: e.target.value});
+                          setWithdrawFormErrors({});
                         }}
-                        rows={8}
-                        className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none text-sm ${
-                          withdrawFormErrors.notes ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                        }`}
-                        required
-                      />
-                      {withdrawFormErrors.notes && (
-                        <p className="text-red-500 text-sm flex items-center">
-                          <AlertCircle className="w-4 h-4 mr-1" />
-                          {withdrawFormErrors.notes}
-                        </p>
-                      )}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                        <p className="text-xs text-blue-800 font-medium">
-                          💡 <strong>Important:</strong> Please provide complete and accurate payment details above. Admin will use this information to process your withdrawal.
-                        </p>
-                      </div>
+                        className="w-full px-3 sm:px-4 py-3 sm:py-4 text-base sm:text-lg border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all border-gray-200 bg-white"
+                      >
+                        <option value="bank">🏦 Bank Transfer</option>
+                        <option value="upi">📱 UPI Payment</option>
+                        <option value="other">💳 Other Method</option>
+                      </select>
                     </div>
+
+                    {/* Bank Transfer Fields */}
+                    {withdrawForm.paymentMethod === 'bank' && (
+                      <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                        <h3 className="text-lg font-semibold text-blue-800 flex items-center">
+                          <CreditCard className="w-5 h-5 mr-2" />
+                          Bank Account Details
+                        </h3>
+                        
+                        {/* Account Holder Name */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Account Holder Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter full name as per bank account"
+                            value={withdrawForm.accountHolderName}
+                            onChange={(e) => {
+                              setWithdrawForm({...withdrawForm, accountHolderName: e.target.value});
+                              if (withdrawFormErrors.accountHolderName) {
+                                setWithdrawFormErrors({...withdrawFormErrors, accountHolderName: ''});
+                              }
+                            }}
+                            className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all ${
+                              withdrawFormErrors.accountHolderName ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                            }`}
+                          />
+                          {withdrawFormErrors.accountHolderName && (
+                            <p className="text-red-500 text-sm flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {withdrawFormErrors.accountHolderName}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Account Number */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Account Number <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter bank account number"
+                            value={withdrawForm.accountNumber}
+                            onChange={(e) => {
+                              setWithdrawForm({...withdrawForm, accountNumber: e.target.value});
+                              if (withdrawFormErrors.accountNumber) {
+                                setWithdrawFormErrors({...withdrawFormErrors, accountNumber: ''});
+                              }
+                            }}
+                            className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all ${
+                              withdrawFormErrors.accountNumber ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                            }`}
+                          />
+                          {withdrawFormErrors.accountNumber && (
+                            <p className="text-red-500 text-sm flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {withdrawFormErrors.accountNumber}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* IFSC Code */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            IFSC Code <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter IFSC code (e.g., SBIN0001234)"
+                            value={withdrawForm.ifscCode}
+                            onChange={(e) => {
+                              setWithdrawForm({...withdrawForm, ifscCode: e.target.value.toUpperCase()});
+                              if (withdrawFormErrors.ifscCode) {
+                                setWithdrawFormErrors({...withdrawFormErrors, ifscCode: ''});
+                              }
+                            }}
+                            className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all ${
+                              withdrawFormErrors.ifscCode ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                            }`}
+                          />
+                          {withdrawFormErrors.ifscCode && (
+                            <p className="text-red-500 text-sm flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {withdrawFormErrors.ifscCode}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Bank Name */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Bank Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter bank name (e.g., State Bank of India)"
+                            value={withdrawForm.bankName}
+                            onChange={(e) => {
+                              setWithdrawForm({...withdrawForm, bankName: e.target.value});
+                              if (withdrawFormErrors.bankName) {
+                                setWithdrawFormErrors({...withdrawFormErrors, bankName: ''});
+                              }
+                            }}
+                            className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all ${
+                              withdrawFormErrors.bankName ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                            }`}
+                          />
+                          {withdrawFormErrors.bankName && (
+                            <p className="text-red-500 text-sm flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {withdrawFormErrors.bankName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* UPI Fields */}
+                    {withdrawForm.paymentMethod === 'upi' && (
+                      <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                        <h3 className="text-lg font-semibold text-purple-800 flex items-center">
+                          <Smartphone className="w-5 h-5 mr-2" />
+                          UPI Payment Details
+                        </h3>
+                        
+                        {/* UPI ID */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            UPI ID <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Enter UPI ID (e.g., yourname@paytm)"
+                            value={withdrawForm.upiId}
+                            onChange={(e) => {
+                              setWithdrawForm({...withdrawForm, upiId: e.target.value});
+                              if (withdrawFormErrors.upiId) {
+                                setWithdrawFormErrors({...withdrawFormErrors, upiId: ''});
+                              }
+                            }}
+                            className={`w-full px-3 sm:px-4 py-3 text-base border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all ${
+                              withdrawFormErrors.upiId ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                            }`}
+                          />
+                          {withdrawFormErrors.upiId && (
+                            <p className="text-red-500 text-sm flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {withdrawFormErrors.upiId}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-600">
+                            Examples: name@paytm, name@ybl, name@okhdfcbank, name@axl
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Other Payment Method */}
+                    {withdrawForm.paymentMethod === 'other' && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          Payment Instructions <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          placeholder="Please provide detailed payment instructions:&#10;• Preferred payment method&#10;• Account details&#10;• Special instructions"
+                          value={withdrawForm.notes}
+                          onChange={(e) => {
+                            setWithdrawForm({...withdrawForm, notes: e.target.value});
+                            if (withdrawFormErrors.notes) {
+                              setWithdrawFormErrors({...withdrawFormErrors, notes: ''});
+                            }
+                          }}
+                          rows={4}
+                          className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none text-sm ${
+                            withdrawFormErrors.notes ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                          }`}
+                        />
+                        {withdrawFormErrors.notes && (
+                          <p className="text-red-500 text-sm flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            {withdrawFormErrors.notes}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Submit Button */}
                     <div className="pt-4">
                       <Button 
                         type="submit"
                         className="w-full py-4 text-lg font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-                        disabled={loading || !withdrawForm.amount || !withdrawForm.notes || parseFloat(withdrawForm.amount) > balance || parseFloat(withdrawForm.amount) < 100 || withdrawForm.notes.trim().length < 10}
+                        disabled={loading || !withdrawForm.amount || parseFloat(withdrawForm.amount) > balance || parseFloat(withdrawForm.amount) < 100}
                       >
                         {loading ? (
                           <div className="flex items-center justify-center space-x-2">
