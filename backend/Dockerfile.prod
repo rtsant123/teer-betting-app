@@ -1,74 +1,97 @@
-# Multi-stage build for production
+# Multi-stage build for production (1GB RAM Optimized)
 FROM python:3.11-slim as builder
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Set environment variables for build optimization
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (minimal for 1GB RAM)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
         curl \
-    && rm -rf /var/lib/apt/lists/*
+        && rm -rf /var/lib/apt/lists/* \
+        && apt-get clean
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Production stage
+# Production stage (minimal image)
 FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# Set environment variables for production
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/app
+ENV MALLOC_ARENA_MAX=2
+ENV PYTHONMALLOC=malloc
+ENV ENVIRONMENT=production
+ENV WORKERS=2
+ENV MAX_WORKERS=2
+ENV TIMEOUT=300
+ENV KEEPALIVE=2
 
 # Set work directory
 WORKDIR /app
 
-# Install runtime dependencies
+# Install only runtime dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libpq5 \
         curl \
-    && rm -rf /var/lib/apt/lists/*
+        ca-certificates \
+        && rm -rf /var/lib/apt/lists/* \
+        && apt-get clean \
+        && groupadd -r appuser \
+        && useradd -r -g appuser appuser
 
 # Copy Python dependencies from builder stage
 COPY --from=builder /root/.local /usr/local
-
-# Production Dockerfile (multi-stage)
-# - Installs build deps in builder layer
-# - Copies only installed site-packages + app source
-# - Runs with a non-root user for safety
 
 # Copy project files (after deps to leverage layer cache)
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/uploads
+RUN mkdir -p uploads logs backups \
+    && mkdir -p uploads/{images,banners,documents,qr_codes} \
+    && chown -R appuser:appuser /app
+
+# Copy start script and make executable
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Switch to non-root user for security
+USER appuser
 
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+# Health check (optimized for production)
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application with gunicorn for production
-# Allow dynamic worker count (default 1 for low-memory envs)
-ENV WORKERS=1
-
-# Create non-root user (only if not existing)
-RUN useradd -m -u 1001 appuser || true \
-    && chown -R appuser:appuser /app
-
-# Copy start script (already in context from COPY . . above) and ensure executable
-RUN chmod +x /app/start.sh || true
+# Run the application with gunicorn for production (1GB RAM optimized)
+CMD ["gunicorn", "app.main:app", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "2", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info", \
+     "--keep-alive", "2", \
+     "--timeout", "300", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--worker-connections", "100", \
+     "--preload"]
 
 USER appuser
 

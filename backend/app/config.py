@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings
 from pydantic import field_validator
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres123@localhost:5434/teer_betting"
+    # Database (will be overridden by environment variables in production)
+    DATABASE_URL: str = "postgresql://postgres:postgres123@db:5432/teer_betting"
     
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -23,13 +23,15 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     
-    # CORS settings
-    ALLOWED_ORIGINS: Union[str, List[str]] = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1:3000,http://127.0.0.1:80,http://127.0.0.1")
-    BACKEND_CORS_ORIGINS: Union[str, List[str]] = os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:3000,http://localhost:80,http://localhost,http://127.0.0.1:3000,http://127.0.0.1:80,http://127.0.0.1")
+    # VPS and Network settings
+    VPS_IP: Optional[str] = os.getenv("VPS_IP")
+    DOMAIN: Optional[str] = os.getenv("DOMAIN")
+    
+    # CORS settings (Enhanced with automatic VPS IP detection)
+    ALLOWED_ORIGINS: Union[str, List[str]] = os.getenv("ALLOWED_ORIGINS", "http://178.128.61.118,http://178.128.61.118:80,https://178.128.61.118,http://frontend:80")
+    BACKEND_CORS_ORIGINS: Union[str, List[str]] = os.getenv("BACKEND_CORS_ORIGINS", "http://178.128.61.118,http://178.128.61.118:80,https://178.128.61.118,http://frontend:80")
     
     # Additional production settings
-    DOMAIN: Optional[str] = os.getenv("DOMAIN")
-    VPS_IP: Optional[str] = os.getenv("VPS_IP")
     FORCE_HTTPS: bool = os.getenv("FORCE_HTTPS", "False").lower() == "true"
     
     @field_validator('ALLOWED_ORIGINS', 'BACKEND_CORS_ORIGINS')
@@ -43,11 +45,36 @@ class Settings(BaseSettings):
     
     @property
     def allowed_origins_list(self) -> list:
-        """Convert ALLOWED_ORIGINS string to list"""
+        """Convert ALLOWED_ORIGINS string to list with automatic VPS IP inclusion"""
         if self.ALLOWED_ORIGINS == "*":
             return ["*"]
+        
+        origins = []
         if isinstance(self.ALLOWED_ORIGINS, list):
-            return self.ALLOWED_ORIGINS
+            origins = self.ALLOWED_ORIGINS
+        else:
+            origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        
+        # Automatically add VPS IP origins if VPS_IP is set
+        if self.VPS_IP:
+            vps_origins = [
+                f"http://{self.VPS_IP}",
+                f"http://{self.VPS_IP}:80",
+                f"https://{self.VPS_IP}",
+                f"https://{self.VPS_IP}:443",
+                f"http://{self.VPS_IP}:3000"
+            ]
+            for origin in vps_origins:
+                if origin not in origins:
+                    origins.append(origin)
+        
+        # Add container networking origins
+        container_origins = ["http://frontend:80", "http://teer_frontend:80", "http://teer_frontend_prod:80"]
+        for origin in container_origins:
+            if origin not in origins:
+                origins.append(origin)
+        
+        return origins
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
     
     @property

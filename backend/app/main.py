@@ -57,62 +57,47 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Security Middleware
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] if settings.DEBUG else ["teerplatform.com", "*.teerplatform.com"]
+    allowed_hosts=["*"] if settings.DEBUG else [
+        settings.VPS_IP, 
+        f"http://{settings.VPS_IP}", 
+        f"https://{settings.VPS_IP}",
+        "178.128.61.118",
+        "localhost", 
+        "127.0.0.1"
+    ] if settings.VPS_IP else ["*"]
 )
 
-# CORS Middleware - Permanent solution with fallback
-origins = []
-
-# Try to get origins from environment
-if hasattr(settings, 'BACKEND_CORS_ORIGINS'):
-    if isinstance(settings.BACKEND_CORS_ORIGINS, str):
-        origins = [origin.strip() for origin in settings.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
-    else:
-        origins = settings.BACKEND_CORS_ORIGINS
-        
-# Add VPS IP if available
-if settings.VPS_IP:
-    vps_origins = [
+# CORS Middleware (Production Optimized)
+cors_origins = []
+if settings.ENVIRONMENT == "production":
+    # Production CORS - Only allow VPS IP
+    cors_origins = [
         f"http://{settings.VPS_IP}",
-        f"http://{settings.VPS_IP}:80",
-        f"http://{settings.VPS_IP}:3000",
         f"https://{settings.VPS_IP}",
-        f"https://{settings.VPS_IP}:443"
+        f"http://{settings.VPS_IP}:80",
+        f"https://{settings.VPS_IP}:443",
+        "http://178.128.61.118",
+        "https://178.128.61.118",
+        "http://178.128.61.118:80",
+        "https://178.128.61.118:443"
     ]
-    origins.extend(vps_origins)
-
-# Fallback to localhost if no origins defined
-if not origins:
-    origins = [
-        "http://localhost:3000",
-        "http://localhost:80",
-        "http://localhost",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:80",
-        "http://127.0.0.1",
-        "http://frontend:80",
-        "http://teer_frontend:80"
-    ]
+else:
+    # Development CORS
+    cors_origins = settings.allowed_origins_list
 
 # Log the origins for debugging
-logger.info(f"CORS Origins: {origins}")
+logger.info(f"Environment: {settings.ENVIRONMENT}")
+logger.info(f"VPS IP: {settings.VPS_IP}")
+logger.info(f"CORS Origins configured: {cors_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
-)
-
-# CORS Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Response-Time"]
+    expose_headers=["X-Request-ID", "X-Response-Time"],
+    max_age=3600  # Cache preflight requests
 )
 
 # Request Timing Middleware
